@@ -85,8 +85,19 @@ def update_page(item):
     exe = connection.execute(query, values)
     return site_id    
 
+def get_safe_value(v):
+    try:
+        return text(v)
+    except:
+        return v
+
 def insert_record(record, table):
     query = db.insert(tables[table])
+    # safe_record = {}
+
+    # for k, v in record.items():
+    #     safe_record[k] = get_safe_value(v)
+
     exe = connection.execute(query, record)
     return exe.inserted_primary_key
 

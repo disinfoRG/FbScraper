@@ -58,9 +58,9 @@ class PostPipeline():
 
 def main():
     import db_manager
-    parsed = ['https://www.facebook.com/watchout.tw/posts/1469132613244947', 'https://www.facebook.com/watchout.tw/posts/1469027029922172']
-    pipeline = PagePipeline(parsed, 75, db_manager)
-    pipeline.pipe()
+    pipeline = PostPipeline([], 14260, db_manager)
+    raw_data = 'sssaAAAAaaa'
+    pipeline.pipe_single_post_raw_data(raw_data)
     print('pause')
 
 if __name__ == "__main__":

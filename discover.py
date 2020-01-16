@@ -41,6 +41,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # from config import fb
-    # fb.start()
-    # test(fb.driver)

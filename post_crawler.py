@@ -13,7 +13,8 @@ class PostCrawler:
         raw_html = self.get_raw_html()
         self.write_to_db(raw_html)
     def get_raw_html(self):
-        return self.browser.page_source
+        # return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
+        return helper.get_html(self.post_node)
     def enter_site(self):
         post_root_url = self.url
         self.browser.get(post_root_url)

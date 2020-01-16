@@ -4,7 +4,7 @@ import helper
 import db_manager
 
 def update_all(browser):
-    articles = db_manager.get_articles_need_to_update(94)
+    articles = db_manager.get_articles_need_to_update()
     for a in articles:
         try:
             update_one(a, browser)
@@ -21,6 +21,7 @@ def test(browser):
     article = dict()
     article['article_id'] = 14259
     article['url'] = 'https://www.facebook.com/znk168/posts/412649276099554'
+    # article['url'] = 'https://www.facebook.com/185537762220181/posts/2426555417632575'
     update_one(article, browser)
 
 def main():
@@ -39,6 +40,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # from config import fb
-    # fb.start()
-    # test(fb.driver)

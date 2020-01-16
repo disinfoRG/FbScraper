@@ -16,6 +16,15 @@ def get_article_by_id(id):
 
 def insert_article_snapshot(s):
     return db.insert_record(s, 'ArticleSnapshot')
+    # columns = []
+    # values = []
+    # for k, v in s.items():
+    #     columns.append(k)
+    #     values.append(v)
+    # column_sql = ', '.join(str(x) for x in columns)
+    # value_sql = ', '.join('{}\''.format(str(x)) for x in values)
+    # sql_text = 'insert into ArticleSnapshot ({}) values ({})'.format(column_sql, value_sql)
+    # return db.execute_sql(sql_text)    
 
 def is_article_existed(column, value):
     return db.is_record_existed('Article',column,value)
