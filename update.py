@@ -17,6 +17,11 @@ def update_one(article, browser):
     ps = PostSpider(article_url, article_id, browser)
     ps.work()
 
+def test(browser):
+    article = dict()
+    article['article_id'] = 14259
+    article['url'] = 'https://www.facebook.com/znk168/posts/412649276099554'
+    update_one(article, browser)
 
 def main():
     from config import fb
@@ -30,10 +35,10 @@ def main():
     if args.all:
         update_all(browser)
     else:
-        article = dict()
-        article['article_id'] = 13491
-        article['url'] = 'https://www.facebook.com/hsiweiC/posts/480714952637723'
-        update_one(article, browser)
+        test(browser)
 
 if __name__ == '__main__':
     main()
+    # from config import fb
+    # fb.start()
+    # test(fb.driver)

@@ -19,6 +19,12 @@ def discover_one(site, browser):
     ps = PageSpider(site_url, site_id, browser, existing_article_urls)
     ps.work()
 
+def test(browser):
+    site = dict()
+    site['site_id'] = 94
+    site['url'] = 'https://www.facebook.com/znk168/'
+    discover_one(site, browser)
+
 def main():
     from config import fb
     fb.start()
@@ -31,10 +37,10 @@ def main():
     if args.all:
         discover_all(browser)
     else:
-        site = dict()
-        site['site_id'] = 94
-        site['url'] = 'https://www.facebook.com/znk168/'
-        discover_one(site, browser)
+        test(browser)
 
 if __name__ == '__main__':
     main()
+    # from config import fb
+    # fb.start()
+    # test(fb.driver)
