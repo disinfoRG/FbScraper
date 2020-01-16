@@ -1,0 +1,10 @@
+.DS_Store
+.ipynb_checkpoints/
+cookies/
+*.log
+.env
+chromedriver
+geckodriver
+__pycache__/
+*.json
+*.ipynb
