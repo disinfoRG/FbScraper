@@ -1,15 +1,20 @@
-from post_spider import PostSpider
+from tqdm import tqdm
 import argparse
+
+# self-defined
+from post_spider import PostSpider
 import helper
 import db_manager
 
 def update_all(browser):
     articles = db_manager.get_articles_need_to_update()
-    for a in articles:
-        try:
-            update_one(a, browser)
-        except Exception as e:
-            helper.print_error(e)
+    with tqdm(total=len(articles)) as pbar:
+        for a in articles:
+            try:
+                update_one(a, browser)
+            except Exception as e:
+                helper.print_error(e)
+            pbar.update(1)
 
 def update_one(article, browser):
     article_id = article['article_id']

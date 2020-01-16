@@ -1,16 +1,22 @@
+import argparse
+from tqdm import tqdm
+
+# self-defined
 from page_spider import PageSpider
 import db_manager
 import helper
 from post_spider import PostSpider
-import argparse
 
 def discover_all(browser):
     sites = db_manager.get_sites_need_to_crawl()
-    for s in sites:
-        try:
-            discover_one(s, browser)
-        except Exception as e:
-            helper.print_error(e)
+
+    with tqdm(total=len(sites)) as pbar:
+        for s in sites:
+            try:
+                discover_one(s, browser)
+            except Exception as e:
+                helper.print_error(e)
+            pbar.update(1)
 
 def discover_one(site, browser):
     site_url = site['url']
