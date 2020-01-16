@@ -16,6 +16,7 @@ sqlalchemy = "*"
 pymysql = "*"
 pugsql = "*"
 python-dotenv = "*"
+tqdm = "*"
 
 [requires]
 python_version = "3.7"

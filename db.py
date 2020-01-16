@@ -18,6 +18,19 @@ def connect_to_db():
 
 engine, connection, tables = connect_to_db()
 
+def get_table_rows(table_name, where=None):
+    table = tables[table_name] 
+    query = table.select()
+    if where is not None:
+        whereclause = text(where)
+        query = query.where(whereclause)
+    
+    items = [dict(x) for x in connection.execute(query).fetchall()]
+
+    return items    
+
+
+
 def is_record_existed(table,column,value):
     query = 'select count(*) from {}'.format(table)
     where = '{} = "{}"'.format(column, value)
@@ -133,6 +146,11 @@ def main():
     column = 'url'
     where = 'site_id={}'.format(75)
     values = get_single_value_of_records_from_table(table,column,where)
+    print('hold')
+
+    a_id = 2300
+    where = 'article_id > {}'.format(a_id)
+    a_list = get_table_rows('Article', where)
     print('hold')
 
 if __name__ == "__main__":
