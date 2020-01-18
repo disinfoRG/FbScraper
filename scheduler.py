@@ -1,14 +1,21 @@
 from crontab import CronTab
+from settings import USER, ROOT_FOLDER_PATH
 
-cron = CronTab(user='ta-shunlee')
+cron = CronTab(user=USER)
 
-job_discover = cron.new(command='cd /srv/web && pipenv run python discover.py --all')
-job_discover.minute.every(5)
-job_update = cron.new(command='cd /srv/web && pipenv run python update.py --all')
-job_update.minute.every(5)
+for job in cron:
+    print('-- removing a cron job: {}'.format(job))
+    cron.remove(job)
 
-for item in cron:
-    print(item)
+job_test_cron = cron.new(command='source ~/.bashrc && cd {} && pipenv run python test_cron.py'.format(ROOT_FOLDER_PATH))
+job_test_cron.minute.every(1)
+job_discover = cron.new(command='source ~/.bashrc && cd {} && pipenv run python discover.py --all'.format(ROOT_FOLDER_PATH))
+job_discover.minute.every(1)
+job_update = cron.new(command='source ~/.bashrc && cd {} && pipenv run python update.py --all'.format(ROOT_FOLDER_PATH))
+job_update.minute.every(1)
+
+for job in cron:
+    print('-- added a new cron job: {}'.format(job))
 
 cron.write()
 
