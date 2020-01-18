@@ -128,7 +128,9 @@ class Facebook:
             helper.print_error(e)
         
         # create a new browser instead of using the previous
-        os.remove(self.session_path)    
+        if self.has_session():
+            os.remove(self.session_path)
+        
         tried_count += 1
         return self.config_browser(browser_type, is_headless, executable_path, tried_count)
 
