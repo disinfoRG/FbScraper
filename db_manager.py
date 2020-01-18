@@ -5,7 +5,7 @@ def get_rows_by_table(table, where):
     try:
         return db.get_table_rows(table, where)
     except Exception as e:
-        Helper.print_error(e)
+        helper.print_error(e)
         return None 
 
 def get_articles_need_to_update(site_id=None):
