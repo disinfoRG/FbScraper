@@ -6,11 +6,11 @@ from sqlalchemy.sql import and_, or_, not_
 
 # self-defined
 import db_helper
-from settings import DB_URL
+from settings import DATABASE_URL
 import helper
 
 def connect_to_db():
-    engine = create_engine(DB_URL)
+    engine = create_engine(DATABASE_URL)
     connection = engine.connect()
     metadata = MetaData()
     metadata.reflect(bind=engine)

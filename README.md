@@ -12,7 +12,7 @@ $ echo CHROMEDRIVER_BIN=<PATH_TO_WEBDRIVER> >> .env
 ```
 2. set database url
 ```sh
-$ echo DB_URL=mysql+pymysql://root:mysecret@127.0.0.1:3306/NewsScraping >> .env
+$ echo DATABASE_URL=mysql+pymysql://root:mysecret@127.0.0.1:3306/NewsScraping >> .env
 ```
 3. set email and password for login
 replace <YOUR_EMAIL> and <YOUR_PASSWORD> to your facebook's email and password

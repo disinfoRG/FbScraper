@@ -18,6 +18,7 @@ pugsql = "*"
 python-dotenv = "*"
 tqdm = "*"
 alembic = "*"
+python-crontab = "*"
 
 [requires]
 python_version = "3.7"
