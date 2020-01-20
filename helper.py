@@ -182,7 +182,7 @@ def get_facebook_url_info(url):
     url_info['original_url'] = url
     
     return url_info
-# /permalink.php?story_fbid=2713992258639165&id=1100522356652838
+    
 def main():
     po_url = 'https://www.facebook.com/almondbrother/posts/3031431170223940?__xts__%5B0%5D=68.ARB4uuLJzs_P4-S_XrvvsCwnv36pUISC5a99w6mC7k12e9zkJeMXyES-_-w_18xFtfnRL5StvmxI_qcTpa8N0BTK96pbRVUegaTZNhkp1i7Hzxtb98kqQBAZEJ03hqzGVU2iSsi7Wy-oP2ir8OfviiaJikCxGNN1-n8q7mQU7c_swKNYtgDMf_qCQqFuVNoxiGiwmlWIzFdCqmaSXD8hGswf8faVGR9Kxw3tSmKLcjTFEm-lygXT1qdauuO5jfQKURS798h7YO3ONmvm3cWKhogsBVNCu1Dp3c01CraTiAMdBg1yMZbouncCy_XZQeRVJfKiWiX_NYEpHlk8WA6gBoLNaa40&__tn__=-R'
     v_url = 'https://www.facebook.com/185537762220181/videos/2426555417632575/?__xts__%5B0%5D=68.ARB-CsV3myg-YhVnQMISQUtWCb1OKkAj9ZOHixGX49YAwEs3RBMpLmuiTXW3Dp1eyEmaJM95SIkCnlM-9Pg5F1BGaroLycIeRK4T8CwJYgs5dGj2xxvZ9OcqrVl8AgziPPFFEzsjjHzgTClO28MNRgR_blqZI3N-G6S-QhZ2OhGZvQn65pgmK5rbRjb4nbm7721pUZDAqGXMOrxHf9tv5wWpQcKhidzpwodCFmL2AYatnBfyv56hZbZ6zNv5zdv03IXjoeTzW7ZqwP9CVL-hlMlcmVhpr99E4GYdz4d3tRqMxRLEZSVuG-aUtmV2G2ACUig9XSkaAWoe8zYzWFVPCnloXV1RVSicccA&__tn__=-R'
