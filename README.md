@@ -46,10 +46,10 @@ fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', True, CHROMEDRIVER_BIN)
 ## Handler (Main Function, aka. called by cronjob on Middle2)
 - discover.py, update.py
     - decide the target url list for spider to crawl and parse
-    - decide how different spider to work together
+    - decide how different spiders to work together
 ## Scheduler (Now not used on Middle2)
 - scheduler.py
-    - decide how often to run the handler
+    - decide how often or when to run which handler (aka. discover.py or update.py)
 ## Spider (xxx now can be: page or post)
 - xxx_spider.py
     - temporary center for all arguments later used to feed in crawler, parser, and pipeline
