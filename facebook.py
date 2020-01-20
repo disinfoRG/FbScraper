@@ -19,7 +19,7 @@ class Facebook:
         self.session_path = './{}_session.json'.format(browser_type)
         self.entrance_url = 'https://www.facebook.com'
         self.driver = None
-        self.session_status = self.config_browser(browser_type, is_headless, executable_path)
+        self.session_status = self.configure_browser(browser_type, is_headless, executable_path)
 
     def start(self):
         if self.session_status == 'attached_session':
@@ -98,7 +98,7 @@ class Facebook:
             return
         self.driver.get(url)
 
-    def config_browser(self, browser_type, is_headless, executable_path, tried_count=0):
+    def configure_browser(self, browser_type, is_headless, executable_path, tried_count=0):
         if tried_count > 2:
             raise Exception('Failed to configure browser (can be due to Network Error)')
 
@@ -132,7 +132,17 @@ class Facebook:
             os.remove(self.session_path)
         
         tried_count += 1
-        return self.config_browser(browser_type, is_headless, executable_path, tried_count)
+        return self.configure_browser(browser_type, is_headless, executable_path, tried_count)
+
+    def configure_headless_options(self, options):
+        options.set_headless()
+        options.add_argument("--disable - gpu")
+        options.add_argument("start-maximized"); # open Browser in maximized mode
+        options.add_argument("disable-infobars"); # disabling infobars
+        options.add_argument("--disable-extensions"); # disabling extensions
+        options.add_argument("--disable-gpu"); # applicable to windows os only
+        options.add_argument("--disable-dev-shm-usage"); # overcome limited resource problems
+        options.add_argument("--no-sandbox"); # Bypass OS security model
 
     def set_session(self, browser_type, is_headless, executable_path):
         try:
@@ -149,9 +159,9 @@ class Facebook:
         if browser_type == "Chrome":
             try:
                 options = webdriver.ChromeOptions()
+
                 if is_headless is True:
-                    options.set_headless()
-                    options.add_argument("--disable - gpu")
+                    self.configure_headless_options(options)
 
                 if executable_path is not None:
                     self.driver = webdriver.Chrome(executable_path=executable_path, options=options)
@@ -165,8 +175,7 @@ class Facebook:
             try:
                 options = webdriver.FirefoxOptions()
                 if is_headless is True:
-                    options.set_headless()
-                    options.add_argument("--disable - gpu")
+                    self.configure_headless_options(options)
 
                 if executable_path is not None:
                     self.driver = webdriver.Firefox(executable_path=executable_path, options=options)
