@@ -136,7 +136,6 @@ class Facebook:
 
     def configure_headless_options(self, options):
         options.set_headless()
-        options.add_argument("--disable - gpu")
         options.add_argument("start-maximized"); # open Browser in maximized mode
         options.add_argument("disable-infobars"); # disabling infobars
         options.add_argument("--disable-extensions"); # disabling extensions
