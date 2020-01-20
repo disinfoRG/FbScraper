@@ -155,7 +155,7 @@ def get_facebook_url_info(url):
     def parse_story_fbid(_url, _type):
         # for story_fbid (aka. https://www.facebook.com/permalink.php?story_fbid=636095870497699&id=185537762220181&__xts__%5B0%5D=68.ARCf_eRqNCjMHCrF1FpzArZumj35pO8phq9MYa8nTLqK9QsoboTD-EOTPFn_mFHto8H7O5ZJbcpGOek-9fi3s_TmxAuuai9GL1vBvNFnYp9niSdU3oDKRrt-HoYoogWDMbUcSt07miwVMcKiscOErEhQxNw4C8bN_pTJB-F_dRQwT1vjOApIZdAgUtlvJ_PxKcLrQa6ZuYCr_MVMdr2j2tlHXXe1bYOdYy-PlxJFdkwS4xyeJbZI6s16EuQ7Ityyz8j7rHoFgj028kQi0ckU77ioWVqbvbqrMRzfEVRmWUGepvI-Wj0sMcFo2XvuZjhUSH7C666eyLP3LetXW1wRQmYqBP2RNGnpawPtt8IgSc8dTmn64XNZw3Q91Rb9kC-9ZabNRTuzUuB4Mec9ANoOVoafbQVC5Yj-ATIac0BJ4dsSFO2KAzHNuVirEpkNb2UmaTxBX4noPXN2Yw3pjF4X-hiWlJrkwQRhI9uFmDHKGzP1ncHeuy_dDQ&__tn__=-R)
         try:
-            return re.findall('\Wid\=(.*?)\D', _url)[0]
+            return re.findall('\Wid\=(\d+)', _url)[0]
         except Exception as e:
             print_error(e)
             return None
@@ -179,9 +179,10 @@ def get_facebook_url_info(url):
     url_info['post_id'] = post_info['id']
     url_info['permalink'] = get_permalink(url_info)
     url_info['type'] = post_info['type']
+    url_info['original_url'] = url
     
     return url_info
-
+# /permalink.php?story_fbid=2713992258639165&id=1100522356652838
 def main():
     po_url = 'https://www.facebook.com/almondbrother/posts/3031431170223940?__xts__%5B0%5D=68.ARB4uuLJzs_P4-S_XrvvsCwnv36pUISC5a99w6mC7k12e9zkJeMXyES-_-w_18xFtfnRL5StvmxI_qcTpa8N0BTK96pbRVUegaTZNhkp1i7Hzxtb98kqQBAZEJ03hqzGVU2iSsi7Wy-oP2ir8OfviiaJikCxGNN1-n8q7mQU7c_swKNYtgDMf_qCQqFuVNoxiGiwmlWIzFdCqmaSXD8hGswf8faVGR9Kxw3tSmKLcjTFEm-lygXT1qdauuO5jfQKURS798h7YO3ONmvm3cWKhogsBVNCu1Dp3c01CraTiAMdBg1yMZbouncCy_XZQeRVJfKiWiX_NYEpHlk8WA6gBoLNaa40&__tn__=-R'
     v_url = 'https://www.facebook.com/185537762220181/videos/2426555417632575/?__xts__%5B0%5D=68.ARB-CsV3myg-YhVnQMISQUtWCb1OKkAj9ZOHixGX49YAwEs3RBMpLmuiTXW3Dp1eyEmaJM95SIkCnlM-9Pg5F1BGaroLycIeRK4T8CwJYgs5dGj2xxvZ9OcqrVl8AgziPPFFEzsjjHzgTClO28MNRgR_blqZI3N-G6S-QhZ2OhGZvQn65pgmK5rbRjb4nbm7721pUZDAqGXMOrxHf9tv5wWpQcKhidzpwodCFmL2AYatnBfyv56hZbZ6zNv5zdv03IXjoeTzW7ZqwP9CVL-hlMlcmVhpr99E4GYdz4d3tRqMxRLEZSVuG-aUtmV2G2ACUig9XSkaAWoe8zYzWFVPCnloXV1RVSicccA&__tn__=-R'
@@ -189,6 +190,7 @@ def main():
     s_url = 'https://www.facebook.com/permalink.php?story_fbid=636095870497699&id=185537762220181&__xts__%5B0%5D=68.ARCf_eRqNCjMHCrF1FpzArZumj35pO8phq9MYa8nTLqK9QsoboTD-EOTPFn_mFHto8H7O5ZJbcpGOek-9fi3s_TmxAuuai9GL1vBvNFnYp9niSdU3oDKRrt-HoYoogWDMbUcSt07miwVMcKiscOErEhQxNw4C8bN_pTJB-F_dRQwT1vjOApIZdAgUtlvJ_PxKcLrQa6ZuYCr_MVMdr2j2tlHXXe1bYOdYy-PlxJFdkwS4xyeJbZI6s16EuQ7Ityyz8j7rHoFgj028kQi0ckU77ioWVqbvbqrMRzfEVRmWUGepvI-Wj0sMcFo2XvuZjhUSH7C666eyLP3LetXW1wRQmYqBP2RNGnpawPtt8IgSc8dTmn64XNZw3Q91Rb9kC-9ZabNRTuzUuB4Mec9ANoOVoafbQVC5Yj-ATIac0BJ4dsSFO2KAzHNuVirEpkNb2UmaTxBX4noPXN2Yw3pjF4X-hiWlJrkwQRhI9uFmDHKGzP1ncHeuy_dDQ&__tn__=-R'
     ph_href = '/Wackyboys.Fans/photos/a.393130864073315/2608708485848864/?type=3&__xts__%5B0%5D=68.ARAfyz236qxprIn2nIBDPHiajithT7nfYrgArqW4IJ0iDzuuw6Pq0tn5vi16KQJjzjRXIA2QAe92bdAScQ7rvfIof1pwjA-zo_5mU9g8AJ56e3iGgJbJMUGTH3YOZlid41rSKXcqGM8O2NGtXexJY6RTR6z79no9b_0SDke6roAklrbQkUjFc_mMPLE3onZjWLV2mdVuXYgg3IeB06TJaO8hYomlzAJeO47FgWldqIHKHq39OFiSnip4QkI6A84HT-4hhQWksKmoez0UL-VxEXsivqxC8w2IB5wxMMLd8cssI6PQKFnXGC1PxM7VZxilaayr9FoLvN1ZH4AktqzrlE3KJg&__tn__=-R'
     s_href = 'permalink.php?story_fbid=636095870497699&id=185537762220181&__xts__%5B0%5D=68.ARCf_eRqNCjMHCrF1FpzArZumj35pO8phq9MYa8nTLqK9QsoboTD-EOTPFn_mFHto8H7O5ZJbcpGOek-9fi3s_TmxAuuai9GL1vBvNFnYp9niSdU3oDKRrt-HoYoogWDMbUcSt07miwVMcKiscOErEhQxNw4C8bN_pTJB-F_dRQwT1vjOApIZdAgUtlvJ_PxKcLrQa6ZuYCr_MVMdr2j2tlHXXe1bYOdYy-PlxJFdkwS4xyeJbZI6s16EuQ7Ityyz8j7rHoFgj028kQi0ckU77ioWVqbvbqrMRzfEVRmWUGepvI-Wj0sMcFo2XvuZjhUSH7C666eyLP3LetXW1wRQmYqBP2RNGnpawPtt8IgSc8dTmn64XNZw3Q91Rb9kC-9ZabNRTuzUuB4Mec9ANoOVoafbQVC5Yj-ATIac0BJ4dsSFO2KAzHNuVirEpkNb2UmaTxBX4noPXN2Yw3pjF4X-hiWlJrkwQRhI9uFmDHKGzP1ncHeuy_dDQ&__tn__=-R'
+    s2_href = '/permalink.php?story_fbid=2617587964946262&id=1100522356652838'
 
     po_info = get_facebook_url_info(po_url)
     v_info = get_facebook_url_info(v_url)
@@ -196,6 +198,7 @@ def main():
     s_info = get_facebook_url_info(s_url)
     ph_href_info = get_facebook_url_info(ph_href)
     s_href_info = get_facebook_url_info(s_href)
+    s2_href_info = get_facebook_url_info(s2_href)
 
     # site_url_1 = 'https://www.facebook.com/%E5%A4%A9%E5%8D%97%E5%9C%B0%E5%8C%97-1063653903655415/'
     # site_url_2 = 'https://www.facebook.com/jesusSavesF13/'
