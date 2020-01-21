@@ -5,7 +5,6 @@ from tqdm import tqdm
 from page_spider import PageSpider
 import db_manager
 import helper
-from post_spider import PostSpider
 
 def discover_all(browser):
     sites = db_manager.get_sites_need_to_crawl()
