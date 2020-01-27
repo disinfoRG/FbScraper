@@ -9,17 +9,18 @@ from urllib3.exceptions import MaxRetryError
 import helper
 
 class Facebook:
-    def __init__(self, email, password, browser_type, executable_path, is_headless):        
+    def __init__(self, email, password, browser_type, executable_path, is_headless=True, should_reuse_session=True):        
         self.email = email
         self.password = password
         self.browser_type = browser_type
         self.executable_path = executable_path
         self.is_headless = is_headless
+        self.should_reuse_session = should_reuse_session
         self.cookie_path = './{}_cookie.json'.format(email)
         self.session_path = './{}_session.json'.format(browser_type)
         self.entrance_url = 'https://www.facebook.com'
         self.driver = None
-        self.session_status = self.configure_browser(browser_type, is_headless, executable_path)
+        self.session_status = self.configure_session()
 
     def start(self):
         if self.session_status == 'attached_session':
@@ -98,12 +99,15 @@ class Facebook:
             return
         self.driver.get(url)
 
-    def configure_browser(self, browser_type, is_headless, executable_path, tried_count=0):
+    def configure_session(self):
+        return self.configure_browser(self.browser_type, self.is_headless, self.executable_path, self.should_reuse_session)
+
+    def configure_browser(self, browser_type, is_headless, executable_path, should_reuse_session, tried_count=0):
         if tried_count > 2:
             raise Exception('Failed to configure browser (can be due to Network Error)')
 
         try:
-            session = self.set_session(browser_type, is_headless, executable_path)
+            session = self.set_session(browser_type, is_headless, executable_path, should_reuse_session)
 
             # verify if the session work by checking if window with url exists or by connecting to a random site
             if self.driver.current_url is not None:
@@ -132,35 +136,37 @@ class Facebook:
             os.remove(self.session_path)
         
         tried_count += 1
-        return self.configure_browser(browser_type, is_headless, executable_path, tried_count)
+        return self.configure_browser(browser_type, is_headless, executable_path, should_reuse_session, tried_count)
 
-    def configure_headless_options(self, options):
-        options.headless = True
+    def add_common_options(self, options):
         options.add_argument("start-maximized"); # open Browser in maximized mode
         options.add_argument("disable-infobars"); # disabling infobars
         options.add_argument("--disable-extensions"); # disabling extensions
+    def add_headless_options(self, options):
+        options.headless = True
         options.add_argument("--disable-gpu"); # applicable to windows os only
         options.add_argument("--disable-dev-shm-usage"); # overcome limited resource problems
         options.add_argument("--no-sandbox"); # Bypass OS security model
 
-    def set_session(self, browser_type, is_headless, executable_path):
-        try:
-            self.attach_to_session()
-            return 'attached_session'
-        except TypeError:
-            # previous session not found
-            pass
-        except Exception as e:
-            helper.print_error(e)
-            pass
+    def set_session(self, browser_type, is_headless, executable_path, should_reuse_session):
+        if should_reuse_session is True:
+            try:
+                self.attach_to_session()
+                return 'attached_session'
+            except TypeError:
+                # previous session not found
+                pass
+            except Exception as e:
+                helper.print_error(e)
+                pass
 
         # the selection of browser
         if browser_type == "Chrome":
             try:
                 options = webdriver.ChromeOptions()
-
+                self.add_common_options(options)
                 if is_headless is True:
-                    self.configure_headless_options(options)
+                    self.add_headless_options(options)
 
                 if executable_path is not None:
                     self.driver = webdriver.Chrome(executable_path=executable_path, options=options)
@@ -173,8 +179,9 @@ class Facebook:
         if browser_type == "Firefox":
             try:
                 options = webdriver.FirefoxOptions()
+                self.add_common_options(options)
                 if is_headless is True:
-                    self.configure_headless_options(options)
+                    self.add_headless_options(options)
 
                 if executable_path is not None:
                     self.driver = webdriver.Firefox(executable_path=executable_path, options=options)

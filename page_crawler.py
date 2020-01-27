@@ -1,15 +1,17 @@
 import helper
 import page_parser_helper as ppa_helper
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 
 class PageCrawler:
-    def __init__(self, url, browser, existing_article_urls, write_to_db_func, max_try_times=3):
+    def __init__(self, url, browser, existing_article_urls, write_to_db_func, log_file, max_try_times=3):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
         self.max_try_times = max_try_times
         self.write_to_db_func = write_to_db_func
+        self.log_file = log_file
 
     def crawl(self):
         self.enter_site()
@@ -25,13 +27,18 @@ class PageCrawler:
         helper.wait()
 
     def expand_post(self):
+        viewed_count = 0
         empty_count = 0
         while empty_count < self.max_try_times:
+            timestamp = 'crawler_timestamp_{}: viewed {} posts'.format(helper.now(), viewed_count)
+            self.log_file.write(timestamp)
+
             height_before, height_after = self.scroll()
             if height_after <= height_before:
                 break
 
             post_urls = self.get_post_urls()
+            viewed_count += len(post_urls)
             new_post_urls = self.remove_old_post_urls(post_urls)
 
             if len(new_post_urls) == 0:
