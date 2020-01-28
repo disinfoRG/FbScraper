@@ -113,7 +113,7 @@ def main():
     mlog_path = 'discover_scheduler.log'
     with open(mlog_path, 'a', buffering=1) as mlog:
         # - start new discover.py process
-        main_process_command = 'pipenv run python discover.py --all &'
+        main_process_command = 'python3 discover.py --all &'
 
         if is_main_process_working() is not True:
             kill_text = '[{}] ------ Kill unused or hanging processes ------\n'.format(helper.now())
