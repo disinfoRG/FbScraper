@@ -20,6 +20,7 @@ def print_error(e):
     exceptionType = type(e)
     errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail)
     print(errMsg)
+    return errMsg
 
 def get_clean_url(url):
     host_url = 'https://www.facebook.com/'

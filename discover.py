@@ -8,28 +8,38 @@ from page_spider import PageSpider
 import db_manager
 import helper
 
+def log_handler(logfile, description, site, result=None):
+    timestamp = None
+
+    if result is not None:
+        timestamp = 'handler_timestamp_{}: {}, {}, result is {} \n'.format(helper.now(), description, site, result)
+    else:
+        timestamp = 'handler_timestamp_{}: {}, {} \n'.format(helper.now(), description, site)
+
+    logfile.write(timestamp)
+
 def discover_all(browser, logfile):
     sites = db_manager.get_sites_need_to_crawl()
     total = len(sites)
 
     with tqdm(total=total, file=logfile) as pbar:
         for s in sites:
+            logfile.write('\n')
+            log_handler(logfile, 'start crawling site', s)
             try:
                 discover_one(s, browser, logfile)
+                log_handler(logfile, 'complete crawling site', s, 'SUCCESS')
             except Exception as e:
-                helper.print_error(e)
-
-            timestamp = 'handler_timestamp_{}'.format(helper.now())
-            pbar.set_description(timestamp)
+                log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
             pbar.update(1)
 
     browser.quit()
 
-def discover_one(site, browser, log_file):
+def discover_one(site, browser, logfile):
     site_url = site['url']
     site_id = site['site_id']
     existing_article_urls = db_manager.get_articles_by_site_id(site_id)
-    ps = PageSpider(site_url, site_id, browser, existing_article_urls, log_file)
+    ps = PageSpider(site_url, site_id, browser, existing_article_urls, logfile)
     ps.work()
 
 def test(browser):
@@ -59,7 +69,7 @@ def main():
                         help='discover new posts in site')
     args = parser.parse_args()
     if args.all:
-        discover_all(browser)
+        discover_all(browser, logfile)
     else:
         test(browser)
 

@@ -1,19 +1,18 @@
 import helper
 import page_parser_helper as ppa_helper
 from bs4 import BeautifulSoup
-from tqdm import tqdm
-
 
 class PageCrawler:
-    def __init__(self, url, browser, existing_article_urls, write_to_db_func, log_file, max_try_times=3):
+    def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=3):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
         self.max_try_times = max_try_times
         self.write_to_db_func = write_to_db_func
-        self.log_file = log_file
+        self.logfile = logfile
 
     def crawl(self):
+        self.logfile.write('\n')
         self.enter_site()
         self.expand_post()
 
@@ -26,13 +25,19 @@ class PageCrawler:
         self.browser.get(post_root_url)
         helper.wait()
 
+    def log_crawler(self, viewed_count, new_count, existing_count, empty_count):
+        timestamp = 'crawler_timestamp_{}: viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n'.format(helper.now(), viewed_count, new_count, existing_count, empty_count)
+        self.logfile.write(timestamp)
+
     def expand_post(self):
         viewed_count = 0
-        empty_count = 0
-        while empty_count < self.max_try_times:
-            timestamp = 'crawler_timestamp_{}: viewed {} posts'.format(helper.now(), viewed_count)
-            self.log_file.write(timestamp)
+        new_count = 0
+        empty_count = None
 
+        while (empty_count is None) or (empty_count < self.max_try_times):
+            self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
+
+            # check if browser is hanging or site is loaded to the end
             height_before, height_after = self.scroll()
             if height_after <= height_before:
                 break
@@ -40,13 +45,16 @@ class PageCrawler:
             post_urls = self.get_post_urls()
             viewed_count += len(post_urls)
             new_post_urls = self.remove_old_post_urls(post_urls)
-
-            if len(new_post_urls) == 0:
-                empty_count += 1
+            new_count = len(new_post_urls)
+            
+            if new_count == 0:
+                if empty_count is not None:
+                    empty_count += 1                    
             else:
                 for p_url in new_post_urls:
                     self.write_to_db_func(p_url)
-
+                # only apply empty count check after first time new_count > 0
+                empty_count = 0
                 self.existing_article_urls += new_post_urls
 
     def remove_old_post_urls(self, post_urls):

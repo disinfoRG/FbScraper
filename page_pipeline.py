@@ -1,11 +1,12 @@
 import zlib
-
+import helper
 
 class PagePipeline:
-    def __init__(self, post_urls, site_id, db_manager):
+    def __init__(self, post_urls, site_id, db_manager, logfile):
         self.post_urls = post_urls
         self.db_manager = db_manager
         self.site_id = site_id
+        self.logfile = logfile
 
     def pipe(self):
         for p_url in self.post_urls:
@@ -16,6 +17,10 @@ class PagePipeline:
     def is_post_existed(self, url):
         # select count(*) from FBPostSnapshot where url=post['url']
         return self.db_manager.is_article_existed('url_hash', zlib.crc32(url.encode()))
+
+    def log_pipeline(self, db_table, db_id, data):
+        timestamp = 'pipeline_timestamp_{}: insert to database, table = {}, id = {}, data = {} \n'.format(helper.now(), db_table, db_id, data)
+        self.logfile.write(timestamp)
 
     def write_post(self, url):
         p = dict()
@@ -30,8 +35,8 @@ class PagePipeline:
         p['article_type'] = 'FBPost'
         p['redirect_to'] = None
 
-        self.db_manager.insert_article(p)
-
+        db_id = self.db_manager.insert_article(p)
+        self.log_pipeline('Article', db_id, p)
 
 def main():
     import db_manager
