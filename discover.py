@@ -8,31 +8,22 @@ from page_spider import PageSpider
 import db_manager
 import helper
 
-def discover_all(browser):
-    # browser.quit()
-    
-    pid = os.getpid()
-    fpath = 'discover_pid{}_timestamp{}.log'.format(pid, helper.now())
+def discover_all(browser, logfile):
     sites = db_manager.get_sites_need_to_crawl()
     total = len(sites)
 
-    with open(fpath, 'a', buffering=1) as f:
-        sys.stdout = f
-        sys.stderr = f
-        
-        with tqdm(total=total, file=f) as pbar:
-            for s in sites:
-                try:
-                    discover_one(s, browser, f)
-                except Exception as e:
-                    helper.print_error(e)
+    with tqdm(total=total, file=logfile) as pbar:
+        for s in sites:
+            try:
+                discover_one(s, browser, logfile)
+            except Exception as e:
+                helper.print_error(e)
 
-                timestamp = 'handler_timestamp_{}'.format(helper.now())
-                pbar.set_description(timestamp)
-                pbar.update(1)
+            timestamp = 'handler_timestamp_{}'.format(helper.now())
+            pbar.set_description(timestamp)
+            pbar.update(1)
 
     browser.quit()
-
 
 def discover_one(site, browser, log_file):
     site_url = site['url']
@@ -49,6 +40,13 @@ def test(browser):
 
 def main():
     from config import fb
+
+    fpath = 'discover_pid{}_timestamp{}.log'.format(os.getpid(), helper.now())
+    logfile = open(fpath, 'a', buffering=1)
+
+    sys.stdout = logfile
+    sys.stderr = logfile
+
     fb.start()
     browser = fb.driver
 
@@ -60,6 +58,8 @@ def main():
         discover_all(browser)
     else:
         test(browser)
+
+    logfile.close()
 
 if __name__ == '__main__':
     main()

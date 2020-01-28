@@ -47,6 +47,11 @@ def get_latest_process_timestamp(logfile_path):
 
     return latest_timestamp
 
+def is_main_process_hanging(logfile_path, selector='scheduler_timestamp', max_retry_times=2, timeout=60*60):
+    logs = get_selected_logs(logfile_path, selector)
+    logs_in_time = [log for log in logs if (helper.now() - get_timestamp(log)) < timeout]
+    return len(logs_in_time) > 2
+
 def is_main_process_working(timeout = 60 * 10):
     fpath = get_latest_created_logfile_path()
 
@@ -54,9 +59,19 @@ def is_main_process_working(timeout = 60 * 10):
         return False
 
     latest_timestamp = get_latest_process_timestamp(fpath)
-    if (latest_timestamp is not None) and ((helper.now() - latest_timestamp) > timeout):
-        return False
-            
+
+    if latest_timestamp is not None:
+        if (helper.now() - latest_timestamp) > timeout:
+            return False
+    else:
+        checkpoint_text = 'main-process-hanging-checkpoint'
+        if is_main_process_hanging(fpath, checkpoint_text):
+            return False
+        else:
+            with open(fpath, 'a', buffering=1) as f:
+                checkpoint_timestamp = 'scheduler_timestamp_{}: {}\n'.format(helper.now(), checkpoint_text)
+                f.write(checkpoint_timestamp)
+
     return True
 
 def reset(logfile_path):
@@ -98,7 +113,7 @@ def main():
     mlog_path = 'discover_scheduler.log'
     with open(mlog_path, 'a', buffering=1) as mlog:
         # - start new discover.py process
-        main_process_command = 'python3 discover.py --all &'
+        main_process_command = 'pipenv run python discover.py --all &'
 
         if is_main_process_working() is not True:
             kill_text = '[{}] ------ Kill unused or hanging processes ------\n'.format(helper.now())
@@ -125,6 +140,6 @@ def test():
     print('hold')
 
 if __name__ == '__main__':
-    main()    
+    main()
 
 
