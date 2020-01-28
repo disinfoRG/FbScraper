@@ -39,14 +39,18 @@ def test(browser):
     discover_one(site, browser)
 
 def main():
-    from config import fb
+    pid = os.getpid()
+    start_at = helper.now()
 
-    fpath = 'discover_pid{}_timestamp{}.log'.format(os.getpid(), helper.now())
+    fpath = 'discover_pid{}_timestamp{}.log'.format(pid, start_at)
     logfile = open(fpath, 'a', buffering=1)
+
+    logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
     sys.stdout = logfile
     sys.stderr = logfile
 
+    from config import fb
     fb.start()
     browser = fb.driver
 
@@ -58,6 +62,10 @@ def main():
         discover_all(browser)
     else:
         test(browser)
+
+    end_at = helper.now()
+    spent = end_at - start_at
+    logfile.write('[{}] -------- FINISH --------, spent: {}\n'.format(end_at, spent))
 
     logfile.close()
 
