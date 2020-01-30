@@ -72,6 +72,5 @@ class PageCrawler:
         helper.wait(10)
         # compare height to see if there's new element loaded
         height_after_scroll = self.browser.execute_script("return document.body.scrollHeight")
-        print(height_after_scroll, height_before_scroll)
 
         return height_before_scroll, height_after_scroll
