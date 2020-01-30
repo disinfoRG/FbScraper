@@ -32,28 +32,31 @@ class PageCrawler:
     def expand_post(self):
         viewed_count = 0
         new_count = 0
-        empty_count = None
+        empty_count = 0
 
-        while (empty_count is None) or (empty_count < self.max_try_times):
+        while empty_count < self.max_try_times:
             self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
 
-            # check if browser is hanging or site is loaded to the end
-            height_before, height_after = self.scroll()
-            if height_after <= height_before:
-                break
+            # # check if browser is hanging or site is loaded to the end
+            # height_before, height_after = self.scroll()
+            # if height_after <= height_before:
+            #     break
+            self.scroll()
 
             post_urls = self.get_post_urls()
-            viewed_count += len(post_urls)
+            viewed_count = len(post_urls)
             new_post_urls = self.remove_old_post_urls(post_urls)
             new_count = len(new_post_urls)
             
             if new_count == 0:
-                if empty_count is not None:
+                if viewed_count < len(self.existing_article_urls):
+                    continue
+                else:
                     empty_count += 1                    
             else:
                 for p_url in new_post_urls:
                     self.write_to_db_func(p_url)
-                # only apply empty count check after first time new_count > 0
+                # reset empty count check when new_count > 0
                 empty_count = 0
                 self.existing_article_urls += new_post_urls
 
