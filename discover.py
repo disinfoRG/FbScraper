@@ -35,18 +35,20 @@ def discover_all(browser, logfile):
 
     browser.quit()
 
-def discover_one(site, browser, logfile):
+def discover_one(site, browser, logfile, max_try_times):
     site_url = site['url']
     site_id = site['site_id']
     existing_article_urls = db_manager.get_articles_by_site_id(site_id)
-    ps = PageSpider(site_url, site_id, browser, existing_article_urls, logfile)
+    ps = PageSpider(site_url, site_id, browser, existing_article_urls, logfile, max_try_times)
     ps.work()
 
-def test(browser):
+
+def test(browser, logfile, max_try_times):
     site = dict()
-    site['site_id'] = 94
-    site['url'] = 'https://www.facebook.com/znk168/'
-    discover_one(site, browser)
+    site['site_id'] = 66
+    site['url'] = 'https://www.facebook.com/jesusSavesF13/'
+    discover_one(site, browser, logfile, max_try_times)
+
 
 def main():
     pid = os.getpid()
@@ -66,12 +68,18 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--all', action='store_true',
-                        help='discover new posts in site')
+                        help='discover new posts in all fb pages')
+    parser.add_argument('-c', '--complete', action='store_true',
+                        help='complete search in one site')
     args = parser.parse_args()
     if args.all:
         discover_all(browser, logfile)
     else:
-        test(browser)
+        if args.complete:
+            max_try_times = 1000
+        else:
+            max_try_times = 3
+        test(browser, logfile, max_try_times)
 
     end_at = helper.now()
     spent = end_at - start_at
