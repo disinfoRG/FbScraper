@@ -68,7 +68,7 @@ def main():
                         help='discover new posts in site')
     args = parser.parse_args()
     if args.all:
-        site_ids = [69, 70, 71, 72, 73, 74, 75, 76]
+        site_ids = [70, 71, 72, 73, 74, 75, 76]
         discover_all(site_ids, browser, logfile)
     else:
         test(browser)
