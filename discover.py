@@ -5,6 +5,7 @@ import sys
 
 # self-defined
 from page_spider import PageSpider
+from logger import Logger
 import db_manager
 import helper
 
@@ -18,11 +19,11 @@ def log_handler(logfile, description, site, result=None):
 
     logfile.write(timestamp)
 
-def discover_all(browser, logfile):
-    sites = db_manager.get_sites_need_to_crawl()
+def discover_all(site_ids, browser, logfile):
+    sites = db_manager.get_sites_need_to_crawl_by_ids(site_ids)
     total = len(sites)
 
-    with tqdm(total=total, file=logfile) as pbar:
+    with tqdm(total=total) as pbar:
         for s in sites:
             logfile.write('\n')
             log_handler(logfile, 'start crawling site', s)
@@ -32,8 +33,6 @@ def discover_all(browser, logfile):
             except Exception as e:
                 log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
             pbar.update(1)
-
-    browser.quit()
 
 def discover_one(site, browser, logfile):
     site_url = site['url']
@@ -53,12 +52,12 @@ def main():
     start_at = helper.now()
 
     fpath = 'discover_pid{}_timestamp{}.log'.format(pid, start_at)
-    logfile = open(fpath, 'a', buffering=1)
+    logfile = Logger(open(fpath, 'a', buffering=1))
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
-    sys.stdout = logfile
-    sys.stderr = logfile
+    # sys.stdout = logfile
+    # sys.stderr = logfile
 
     from config import fb
     fb.start()
@@ -69,14 +68,18 @@ def main():
                         help='discover new posts in site')
     args = parser.parse_args()
     if args.all:
-        discover_all(browser, logfile)
+        site_ids = [69, 70, 71, 72, 73, 74, 75, 76]
+        discover_all(site_ids, browser, logfile)
     else:
         test(browser)
+
+    browser.quit()
+    logfile.write('[{}] Quit Browser \n'.format(helper.now()))
 
     end_at = helper.now()
     spent = end_at - start_at
     logfile.write('[{}] -------- FINISH --------, spent: {}\n'.format(end_at, spent))
-
+    
     logfile.close()
 
 if __name__ == '__main__':
