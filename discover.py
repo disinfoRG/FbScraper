@@ -19,8 +19,8 @@ def log_handler(logfile, description, site, result=None):
 
     logfile.write(timestamp)
 
-def discover_all(site_ids, browser, logfile):
-    sites = db_manager.get_sites_need_to_crawl_by_ids(site_ids)
+def discover_all(browser, logfile):
+    sites = db_manager.get_sites_need_to_crawl()
     total = len(sites)
 
     has_error = False
@@ -91,8 +91,7 @@ def main():
                         help='discover new posts in site')
     args = parser.parse_args()
     if args.all:
-        site_ids = [79, 80, 87, 88, 89, 90, 91]
-        discover_all(site_ids, browser, logfile)
+        discover_all(browser, logfile)
     else:
         test(browser)
 
