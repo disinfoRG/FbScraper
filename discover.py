@@ -19,8 +19,8 @@ def log_handler(logfile, description, site, result=None):
 
     logfile.write(timestamp)
 
-def discover_all(browser, logfile):
-    sites = db_manager.get_sites_need_to_crawl()
+def discover_all(browser, logfile, site_ids):
+    sites = db_manager.get_sites_need_to_crawl_by_ids(site_ids)
     total = len(sites)
 
     has_error = False
@@ -50,7 +50,7 @@ def discover_all(browser, logfile):
             log_handler(logfile, 'start crawling site', s)
 
             try:
-                discover_one(s, running_browser, logfile)
+                discover_one(s, running_browser, logfile, 6)
                 log_handler(logfile, 'complete crawling site', s, 'SUCCESS')
             except Exception as e:
                 log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
@@ -95,7 +95,8 @@ def main():
                         help='complete search in one site')
     args = parser.parse_args()
     if args.all:
-        discover_all(browser, logfile)
+        site_ids = [75, 76, 92, 93, 94, 95, 97, 975]
+        discover_all(browser, logfile, site_ids)
     else:
         if args.complete:
             max_try_times = 1000
@@ -108,8 +109,6 @@ def main():
         logfile.write('[{}] Quit Browser, result is SUCCESS \n'.format(helper.now()))
     except Exception as e:
         logfile.write('[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e)))
-
-
 
     end_at = helper.now()
     spent = end_at - start_at
