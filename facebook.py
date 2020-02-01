@@ -19,9 +19,10 @@ class Facebook:
         self.cookie_path = './{}_cookie.json'.format(email)
         self.session_path = './{}_session.json'.format(browser_type)
         self.entrance_url = 'https://www.facebook.com'
+        self.tmp_url = 'https://www.google.com'
         self.driver = None
         self.session_status = self.configure_session()
-
+        
     def start(self):
         if self.session_status == 'attached_session':
             return
@@ -64,7 +65,7 @@ class Facebook:
             with open(self.cookie_path, 'r', encoding='utf-8') as f:
                 cookie_list = json.loads(f.read())
             if len(cookie_list) > 0:
-                self.driver.get(self.entrance_url)
+                self.driver.get(self.tmp_url)
                 for c in cookie_list:
                     if 'expiry' in c:
                         cookie = {}
@@ -113,7 +114,7 @@ class Facebook:
             if self.driver.current_url is not None:
                 pass
             else:
-                self.min_reload_get(self.entrance_url)
+                self.min_reload_get(self.tmp_url)
 
             return session
         except NoSuchWindowException:            

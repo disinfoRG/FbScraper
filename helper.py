@@ -4,10 +4,23 @@ import random
 import re
 import traceback
 import sys
+import os
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+def has_file(fpath):
+    try:
+        return os.path.exists(fpath)
+    except:
+        return False
+
+# n = How many elements each list should have 
+def divide_chunks(l, n=10): 
+    # looping till length l 
+    for i in range(0, len(l), n):  
+        yield l[i:i + n] 
 
 def print_error(e):
     error_class = e.__class__.__name__ #取得錯誤類型
@@ -19,7 +32,7 @@ def print_error(e):
     funcName = lastCallStack[2] #取得發生的函數名稱
     exceptionType = type(e)
     errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail)
-    print(errMsg)
+    sys.stderr.write(errMsg)
     return errMsg
 
 def get_clean_url(url):

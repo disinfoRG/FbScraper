@@ -21,6 +21,11 @@ def get_article_by_id(id):
     sql_text = 'select * from Article where article_id={}'.format(id)
     return db.get_record(sql_text)
 
+def get_sites_need_to_crawl_by_ids(ids):
+    ids_text = ', '.join(str(id) for id in ids)
+    sql_text = 'select * from Site where site_id in ({})'.format(ids_text)
+    return db.get_records(sql_text)    
+
 def insert_article_snapshot(s):
     return db.insert_record(s, 'ArticleSnapshot')
     # columns = []
@@ -111,7 +116,8 @@ def update_article(article_obj):
     return db.execute_sql(sql_text)
 
 def main():
-    a_list = get_articles_need_to_update(94)
+    # a_list = get_articles_need_to_update(94)
+    sites = get_sites_need_to_crawl_by_ids([69, 70, 71, 72, 73, 74, 75, 76])
     print('hold')
 if __name__ == "__main__":
     main()
