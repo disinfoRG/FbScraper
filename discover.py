@@ -23,15 +23,25 @@ def discover_all(site_ids, browser, logfile):
     sites = db_manager.get_sites_need_to_crawl_by_ids(site_ids)
     total = len(sites)
 
+    has_error = False
+    running_browser = browser
     with tqdm(total=total) as pbar:
         for s in sites:
+            if has_error:
+                from config import fb
+                fb.start()
+                running_browser = fb.driver
+                has_error = False
+
             logfile.write('\n')
             log_handler(logfile, 'start crawling site', s)
             try:
-                discover_one(s, browser, logfile)
+                discover_one(s, running_browser, logfile)
                 log_handler(logfile, 'complete crawling site', s, 'SUCCESS')
             except Exception as e:
                 log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
+                running_browser.quit()
+                has_error = True
             pbar.update(1)
 
 def discover_one(site, browser, logfile):
@@ -68,7 +78,7 @@ def main():
                         help='discover new posts in site')
     args = parser.parse_args()
     if args.all:
-        site_ids = [70, 71, 72, 73, 74, 75, 76]
+        site_ids = [70, 79, 80, 87, 88, 89, 90, 91]
         discover_all(site_ids, browser, logfile)
     else:
         test(browser)
