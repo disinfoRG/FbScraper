@@ -2,6 +2,7 @@ import helper
 import page_parser_helper as ppa_helper
 from bs4 import BeautifulSoup
 
+
 class PageCrawler:
     def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=3):
         self.url = helper.get_clean_url(url)
@@ -55,7 +56,9 @@ class PageCrawler:
                     empty_count += 1                    
             else:
                 for p_url in new_post_urls:
-                    self.write_to_db_func(p_url)
+                    if p_url:
+                        self.write_to_db_func(p_url)
+
                 # reset empty count check when new_count > 0
                 empty_count = 0
                 self.existing_article_urls += new_post_urls
@@ -75,6 +78,5 @@ class PageCrawler:
         helper.wait(10)
         # compare height to see if there's new element loaded
         height_after_scroll = self.browser.execute_script("return document.body.scrollHeight")
-        print(height_after_scroll, height_before_scroll)
 
         return height_before_scroll, height_after_scroll
