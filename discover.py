@@ -27,20 +27,33 @@ def discover_all(site_ids, browser, logfile):
     running_browser = browser
     with tqdm(total=total) as pbar:
         for s in sites:
-            if has_error:
-                from config import fb
-                fb.start()
-                running_browser = fb.driver
-                has_error = False
-
             logfile.write('\n')
+
+            if has_error:
+                log_handler(logfile, '<create a new facebook browser> start', s)
+                
+                try:
+                    running_browser.quit()
+                    helper.wait(120)
+
+                    from facebook import Facebook
+                    from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
+                    fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, True, False)
+                    fb.start()
+                    running_browser = fb.driver
+                    has_error = False
+                    log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
+                except Exception as e:
+                    log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
+                    break
+
             log_handler(logfile, 'start crawling site', s)
+
             try:
                 discover_one(s, running_browser, logfile)
                 log_handler(logfile, 'complete crawling site', s, 'SUCCESS')
             except Exception as e:
                 log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
-                running_browser.quit()
                 has_error = True
             pbar.update(1)
 
@@ -78,13 +91,18 @@ def main():
                         help='discover new posts in site')
     args = parser.parse_args()
     if args.all:
-        site_ids = [70, 79, 80, 87, 88, 89, 90, 91]
+        site_ids = [79, 80, 87, 88, 89, 90, 91]
         discover_all(site_ids, browser, logfile)
     else:
         test(browser)
 
-    browser.quit()
-    logfile.write('[{}] Quit Browser \n'.format(helper.now()))
+    try:
+        browser.quit()
+        logfile.write('[{}] Quit Browser, result is SUCCESS \n'.format(helper.now()))
+    except Exception as e:
+        logfile.write('[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e)))
+
+
 
     end_at = helper.now()
     spent = end_at - start_at
