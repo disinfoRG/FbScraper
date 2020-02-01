@@ -5,6 +5,7 @@ import sys
 
 # self-defined
 from page_spider import PageSpider
+from logger import Logger
 import db_manager
 import helper
 
@@ -22,18 +23,39 @@ def discover_all(browser, logfile):
     sites = db_manager.get_sites_need_to_crawl()
     total = len(sites)
 
-    with tqdm(total=total, file=logfile) as pbar:
+    has_error = False
+    running_browser = browser
+    with tqdm(total=total) as pbar:
         for s in sites:
             logfile.write('\n')
+
+            if has_error:
+                log_handler(logfile, '<create a new facebook browser> start', s)
+                
+                try:
+                    running_browser.quit()
+                    helper.wait(120)
+
+                    from facebook import Facebook
+                    from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
+                    fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, True, False)
+                    fb.start()
+                    running_browser = fb.driver
+                    has_error = False
+                    log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
+                except Exception as e:
+                    log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
+                    break
+
             log_handler(logfile, 'start crawling site', s)
+
             try:
-                discover_one(s, browser, logfile)
+                discover_one(s, running_browser, logfile)
                 log_handler(logfile, 'complete crawling site', s, 'SUCCESS')
             except Exception as e:
                 log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
+                has_error = True
             pbar.update(1)
-
-    browser.quit()
 
 def discover_one(site, browser, logfile, max_try_times):
     site_url = site['url']
@@ -55,12 +77,12 @@ def main():
     start_at = helper.now()
 
     fpath = 'discover_pid{}_timestamp{}.log'.format(pid, start_at)
-    logfile = open(fpath, 'a', buffering=1)
+    logfile = Logger(open(fpath, 'a', buffering=1))
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
-    sys.stdout = logfile
-    sys.stderr = logfile
+    # sys.stdout = logfile
+    # sys.stderr = logfile
 
     from config import fb
     fb.start()
@@ -81,10 +103,18 @@ def main():
             max_try_times = 3
         test(browser, logfile, max_try_times)
 
+    try:
+        browser.quit()
+        logfile.write('[{}] Quit Browser, result is SUCCESS \n'.format(helper.now()))
+    except Exception as e:
+        logfile.write('[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e)))
+
+
+
     end_at = helper.now()
     spent = end_at - start_at
     logfile.write('[{}] -------- FINISH --------, spent: {}\n'.format(end_at, spent))
-
+    
     logfile.close()
 
 if __name__ == '__main__':
