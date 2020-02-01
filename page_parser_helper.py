@@ -13,6 +13,9 @@ def get_post_url(post):
                 url_info = helper.get_facebook_url_info(url)
                 if url_info['permalink'] is not None:
                     return url_info['permalink']
+                elif url_info['original_url'] is not None:
+                    return url_info['original_url']
+                pass
         except:
             pass
 
