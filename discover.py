@@ -81,6 +81,7 @@ def main():
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
+
     # sys.stdout = logfile
     # sys.stderr = logfile
 
