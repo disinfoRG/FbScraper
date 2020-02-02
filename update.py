@@ -77,6 +77,7 @@ def main():
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
+    # comment and disable redirect of stdout and stderr to original logfile, for displaying on middle2 cronjob's log instead
     # sys.stdout = logfile
     # sys.stderr = logfile
 

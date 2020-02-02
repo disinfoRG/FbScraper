@@ -21,7 +21,7 @@ def log_handler(logfile, description, site, result=None):
 
 def discover_all(browser, logfile):
     logfile.write('\n')
-    
+
     sites = db_manager.get_sites_need_to_crawl()
     total = len(sites)
 
@@ -81,6 +81,7 @@ def main():
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
+    # comment and disable redirect of stdout and stderr to original logfile, for displaying on middle2 cronjob's log instead
     # sys.stdout = logfile
     # sys.stderr = logfile
 
