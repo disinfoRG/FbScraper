@@ -9,6 +9,6 @@ class PostSpider:
         self.browser = browser
         self.logfile = logfile
     def work(self):
-        pi = PostPipeline([], self.article_id, db_manager)
+        pi = PostPipeline([], self.article_id, db_manager, self.logfile)
         pc = PostCrawler(self.article_url, self.browser, pi.pipe_single_post_raw_data, self.logfile)
         pc.crawl()
