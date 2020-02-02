@@ -93,7 +93,7 @@ def main():
                         help='complete search in one site')
     args = parser.parse_args()
     if args.all:
-        site_ids = [75, 76, 92, 93, 94, 95, 97, 975]
+        site_ids = [95]
         discover_all(browser, logfile, site_ids)
     else:
         if args.complete:
