@@ -2,13 +2,14 @@ import helper
 import page_parser_helper as ppa_helper
 from bs4 import BeautifulSoup
 
+MAX_TRY_TIMES_DEFAULT = 3
 
 class PageCrawler:
-    def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=3):
+    def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=MAX_TRY_TIMES_DEFAULT):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
-        self.max_try_times = max_try_times
+        self.max_try_times = max_try_times if max_try_times else MAX_TRY_TIMES_DEFAULT
         self.write_to_db_func = write_to_db_func
         self.logfile = logfile
 
