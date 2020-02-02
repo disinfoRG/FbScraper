@@ -10,50 +10,58 @@ import helper
 import db_manager
 
 
-def log_handler(logfile, description, article, result=None):
+def log_handler(logfile, description, parameters, result=None):
     timestamp = None
 
     if result is not None:
-        timestamp = 'handler_timestamp_{}: {}, {}, result is {} \n'.format(helper.now(), description, article, result)
+        timestamp = 'handler_timestamp_{}: {}, {}, result is {} \n'.format(helper.now(), description, parameters, result)
     else:
-        timestamp = 'handler_timestamp_{}: {}, {} \n'.format(helper.now(), description, article)
+        timestamp = 'handler_timestamp_{}: {}, {} \n'.format(helper.now(), description, parameters)
 
     logfile.write(timestamp)
 
-def update_all(browser, logfile):
+def update_all(site_ids, browser, logfile):
     logfile.write('\n')
 
-    articles = db_manager.get_articles_need_to_update()
+    for site_id in site_ids:
+        log_handler(logfile, 'start snapshoting articles from site', site_id)
+        articles = db_manager.get_articles_need_to_update(site_id)
 
-    has_error = False
-    running_browser = browser
-    with tqdm(total=len(articles)) as pbar:
-        for article in articles:
-            if has_error:
-                log_handler(logfile, '<create a new facebook browser> start', article)
-                
-                try:
-                    running_browser.quit()
-                    helper.wait(120)
+        try:    
+            has_error = False
+            running_browser = browser
+            with tqdm(total=len(articles)) as pbar:
+                for article in articles:
+                    if has_error:
+                        log_handler(logfile, '<create a new facebook browser> start', article)
+                        
+                        try:
+                            running_browser.quit()
+                            helper.wait(120)
 
-                    from facebook import Facebook
-                    from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-                    fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, True, False)
-                    fb.start()
-                    running_browser = fb.driver
-                    has_error = False
-                    log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
-                except Exception as e:
-                    log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
-                    break
+                            from facebook import Facebook
+                            from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
+                            fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, True, False)
+                            fb.start()
+                            running_browser = fb.driver
+                            has_error = False
+                            log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
+                        except Exception as e:
+                            log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
+                            break
 
-            try:
-                update_one(article, browser, logfile)
-                log_handler(logfile, 'complete snapshoting article', article, 'SUCCESS')
-            except Exception as e:
-                log_handler(logfile, 'failed snapshoting article', article, helper.print_error(e))
-                has_error = True
-            pbar.update(1)
+                    log_handler(logfile, 'start snapshoting article', article)
+
+                    try:
+                        update_one(article, browser, logfile)
+                        log_handler(logfile, 'complete snapshoting article', article, 'SUCCESS')
+                    except Exception as e:
+                        log_handler(logfile, 'failed snapshoting article', article, helper.print_error(e))
+                        has_error = True
+                    pbar.update(1)
+            log_handler(logfile, 'complete snapshoting articles from site id = {}'.format(site_id), articles)
+        except Exception as e:
+            log_handler(logfile, 'failed snapshoting articles from site id = {}'.format(site_id), articles, helper.print_error(e))
 
 def update_one(article, browser, logfile):
     article_id = article['article_id']
@@ -90,7 +98,8 @@ def main():
                         help='update all posts in db')
     args = parser.parse_args()
     if args.all:
-        update_all(browser, logfile)
+        site_ids = [69, 70, 71, 73, 74]
+        update_all(site_ids, browser, logfile)
     else:
         test(browser, logfile)
 
