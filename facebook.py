@@ -23,6 +23,7 @@ class Facebook:
         self.driver = None
         self.session_status = self.configure_session()
         
+        
     def start(self):
         if self.session_status == 'attached_session':
             return
