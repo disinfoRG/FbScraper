@@ -57,7 +57,7 @@ def discover_all(browser, logfile):
                 has_error = True
             pbar.update(1)
 
-def discover_one(site, browser, logfile, max_try_times):
+def discover_one(site, browser, logfile, max_try_times=None):
     site_url = site['url']
     site_id = site['site_id']
     existing_article_urls = db_manager.get_articles_by_site_id(site_id)
