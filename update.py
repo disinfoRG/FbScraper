@@ -47,6 +47,8 @@ def update_all(browser, logfile):
                     log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
                     break
 
+            log_handler(logfile, 'start snapshoting article', article)
+            
             try:
                 update_one(article, browser, logfile)
                 log_handler(logfile, 'complete snapshoting article', article, 'SUCCESS')
