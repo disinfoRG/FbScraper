@@ -20,6 +20,8 @@ def log_handler(logfile, description, site, result=None):
     logfile.write(timestamp)
 
 def discover_all(browser, logfile, site_ids):
+    logfile.write('\n')
+
     sites = db_manager.get_sites_need_to_crawl_by_ids(site_ids)
     total = len(sites)
 
@@ -48,14 +50,14 @@ def discover_all(browser, logfile, site_ids):
             log_handler(logfile, 'start crawling site', s)
 
             try:
-                discover_one(s, running_browser, logfile, 6)
+                discover_one(s, running_browser, logfile)
                 log_handler(logfile, 'complete crawling site', s, 'SUCCESS')
             except Exception as e:
                 log_handler(logfile, 'failed crawling site', s, helper.print_error(e))
                 has_error = True
             pbar.update(1)
 
-def discover_one(site, browser, logfile, max_try_times):
+def discover_one(site, browser, logfile, max_try_times=None)):
     site_url = site['url']
     site_id = site['site_id']
     existing_article_urls = db_manager.get_articles_by_site_id(site_id)
@@ -79,6 +81,7 @@ def main():
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
+    # comment and disable redirect of stdout and stderr to original logfile, for displaying on middle2 cronjob's log instead
     # sys.stdout = logfile
     # sys.stderr = logfile
 
