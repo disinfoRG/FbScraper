@@ -26,6 +26,16 @@ def get_sites_need_to_crawl_by_ids(ids):
     sql_text = 'select * from Site where site_id in ({})'.format(ids_text)
     return db.get_records(sql_text)    
 
+def get_sites_tagged_need_to_discover():
+    where_text = 'is_active = 1 and type = "fb_page"'
+    sql_text = 'select * from Site where {}'.format(where_text)
+    return db.get_records(sql_text)
+
+def get_articles_tagged_need_to_update():
+    now = helper.now()
+    sql_text = 'select * from Article where next_snapshot_at <= {} and article_type="FBPost"'.format(now)
+    return db.get_records(sql_text)    
+
 def insert_article_snapshot(s):
     return db.insert_record(s, 'ArticleSnapshot')
     # columns = []

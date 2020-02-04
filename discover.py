@@ -57,7 +57,7 @@ def discover_all(browser, logfile, site_ids):
                 has_error = True
             pbar.update(1)
 
-def discover_one(site, browser, logfile, max_try_times=None)):
+def discover_one(site, browser, logfile, max_try_times=None):
     site_url = site['url']
     site_id = site['site_id']
     existing_article_urls = db_manager.get_articles_by_site_id(site_id)
@@ -71,12 +71,24 @@ def test(browser, logfile, max_try_times):
     site['url'] = 'https://www.facebook.com/jesusSavesF13/'
     discover_one(site, browser, logfile, max_try_times)
 
+def discover_by_controller(browser, logfile, site):
+    log_handler(logfile, 'start crawling site', site)
 
-def main():
+    try:
+        discover_one(site, browser, logfile)
+        log_handler(logfile, 'complete crawling site', site, 'SUCCESS')
+    except Exception as e:
+        log_handler(logfile, 'failed crawling site', site, helper.print_error(e))
+
+def main(is_controller_mode=False, controller_site=None, controller_email=None, controller_password=None):
     pid = os.getpid()
     start_at = helper.now()
 
     fpath = 'discover_pid{}_timestamp{}.log'.format(pid, start_at)
+
+    if is_controller_mode:
+        fpath = '{}_siteid{}_{}'.format(controller_email, controller_site['site_id'], fpath)
+
     logfile = Logger(open(fpath, 'a', buffering=1))
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
@@ -85,25 +97,44 @@ def main():
     # sys.stdout = logfile
     # sys.stderr = logfile
 
-    from config import fb
-    fb.start()
-    browser = fb.driver
+    browser = None
+    has_error = False
+    if not is_controller_mode:
+        from config import fb
+        fb.start()
+        browser = fb.driver
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--all', action='store_true',
-                        help='discover new posts in all fb pages')
-    parser.add_argument('-c', '--complete', action='store_true',
-                        help='complete search in one site')
-    args = parser.parse_args()
-    if args.all:
-        site_ids = [95]
-        discover_all(browser, logfile, site_ids)
-    else:
-        if args.complete:
-            max_try_times = 1000
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-a', '--all', action='store_true',
+                            help='discover new posts in all fb pages')
+        parser.add_argument('-c', '--complete', action='store_true',
+                            help='complete search in one site')
+        args = parser.parse_args()
+        if args.all:
+            site_ids = [95]
+            discover_all(browser, logfile, site_ids)
         else:
-            max_try_times = 3
-        test(browser, logfile, max_try_times)
+            if args.complete:
+                max_try_times = 1000
+            else:
+                max_try_times = 3
+            test(browser, logfile, max_try_times)
+    else:
+        log_handler(logfile, '<create a new facebook browser> start', controller_site)
+        
+        try:
+            from facebook import Facebook
+            from settings import CHROMEDRIVER_BIN
+            fb = Facebook(controller_email, controller_password, 'Chrome', CHROMEDRIVER_BIN, True)
+            fb.start()
+            browser = fb.driver
+            log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
+        except Exception as e:
+            log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
+            has_error = True
+
+        if not has_error:
+            discover_by_controller(browser, logfile, controller_site)
 
     try:
         browser.quit()
