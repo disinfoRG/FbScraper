@@ -1,7 +1,7 @@
-from multiprocessing import Pool
 import json
 import os
 import re
+import threading
 
 # self-defined
 import helper
@@ -21,6 +21,7 @@ class FbController:
         self.session_id_by_cookie_id = {}
         self.cookie_id_by_session_id = {}
         self.password_by_email = password_by_email
+        self.thread_pool = []
 
     def control(self):
         self.update_cookie_and_session_ids()
@@ -53,16 +54,21 @@ class FbController:
             else:
                 break
 
-        n = 2
-        site_tasks_chunk = helper.divide_chunks(site_tasks, n)
-        for n_sites in site_tasks_chunk:
-            for site in n_sites:
-                self.discover_site(site)
-            # with Pool(n) as p:
-            #     p.map(self.discover_site, n_sites)
+            for s_task in site_tasks:
+                t = threading.Thread(target=self.discover_site,args=[s_task])
+                t.daemon = False
+                self.thread_pool.append(t)
+            # for a_task in article_tasks:
+            #     t = threading.Thread(target=self.update_article,args=[a_task])
+            #     t.daemon = False
+            #     self.thread_pool.append(t)
 
-        # with Pool(2) as p:
-        #     p.map(self.update_article, article_tasks)
+            self.start()
+
+    def start(self):
+        if len(thread_pool) > 0:
+            for t in thread_pool:
+                t.start()
 
     def update_cookie_and_session_ids(self):
         for email in self.password_by_email.keys():
