@@ -111,7 +111,7 @@ def main(is_controller_mode=False, controller_site=None, controller_email=None, 
                             help='complete search in one site')
         args = parser.parse_args()
         if args.all:
-            site_ids = [95]
+            site_ids = [87, 89, 93, 95]
             discover_all(browser, logfile, site_ids)
         else:
             if args.complete:
