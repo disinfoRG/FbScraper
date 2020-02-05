@@ -5,7 +5,7 @@ STATUS_SUCCESS = 'SUCCESS'
 STATUS_FAILED = 'FAILED'
 
 class PostPipeline():
-    def __init__(self, post_urls, article_id, db_manager, logfile, next_snapshot_at_interval=3600):
+    def __init__(self, post_urls, article_id, db_manager, logfile, next_snapshot_at_interval=60*60*24*3)):
         self.post_urls = post_urls
         self.db_manager = db_manager
         self.article_id = article_id
