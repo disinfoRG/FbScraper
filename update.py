@@ -98,7 +98,7 @@ def main():
                         help='update all posts in db')
     args = parser.parse_args()
     if args.all:
-        site_ids = [975, 97, 94, 93, 92, 91, 90, 89, 88, 87, 80, 79, 77, 76, 75, 74, 73, 71, 70, 69]
+        site_ids = [21, 22, 23, 24, 25, 26, 27, 28]
         update_all(site_ids, browser, logfile)
     else:
         test(browser, logfile)
