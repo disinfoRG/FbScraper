@@ -9,6 +9,7 @@ from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import MoveTargetOutOfBoundsException
 
 def has_file(fpath):
     try:
@@ -44,14 +45,23 @@ def get_clean_url(url):
         return url.split('?')[0]
 
 def click_without_move(selector, driver):
-    ele = wait_element(selector, driver)
-    ele.click()
+    try:
+        ele = wait_element(selector, driver)
+        ele.click()
+    except Exception as e:
+        print_error(e)    
 
 def click(node, driver):
     try:
         ActionChains(driver).move_to_element(node).click(node).perform()
+        return True
+    except MoveTargetOutOfBoundsException as e:
+        print_error(e)
+        node.click()
+        return True
     except Exception as e:
         print_error(e)
+        return False
 
 def now():
     return int(datetime.now().timestamp())

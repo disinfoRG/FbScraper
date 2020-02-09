@@ -16,10 +16,12 @@ class PostCrawler:
     def crawl(self):
         self.logfile.write('\n')
         self.enter_site()
-        self.locate_target_post()
-        self.expand_comment()
-        raw_html = self.get_raw_html()
-        self.write_to_db and self.write_to_db(raw_html)
+        is_located = self.locate_target_post()
+
+        if is_located:
+            self.expand_comment()
+            raw_html = self.get_raw_html()
+            self.write_to_db and self.write_to_db(raw_html)
 
     def get_raw_html(self):
         # return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
@@ -44,9 +46,11 @@ class PostCrawler:
         if not self.post_node:
             post_not_found = 'crawler_timestamp_{}: failed and article not found with selector "{}", article url is {} \n'.format(helper.now(), selector, self.url)
             self.logfile.write(post_not_found)
+            return False
         else:
             post_is_found = 'crawler_timestamp_{}: success and article is located with selector "{}", article url is {} \n'.format(helper.now(), selector, self.url)
             self.logfile.write(post_is_found)
+            return True
 
     def expand_comment(self):
         if not self.post_node:
@@ -54,7 +58,7 @@ class PostCrawler:
 
         self.turn_off_comment_filter()
         self.load_comment(0)
-        self.load_comment(1)
+        # self.load_comment(1)
 
     def turn_off_comment_filter(self):
         selector = '[data-testid="UFI2ViewOptionsSelector/root"]'
@@ -93,11 +97,14 @@ class PostCrawler:
 
                     for c_loader in comment_loaders:
                         # print(c_loader.get_attribute('innerText'))
-                        helper.click(c_loader, self.browser)
-                        helper.wait()
-                        clicked_count += 1
-                        self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
-                else:
+                        is_clicked = helper.click(c_loader, self.browser)
+                        if is_clicked:
+                            helper.wait()
+                            clicked_count += 1
+                            self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
+                        else:
+                            pass
+                elif clicked_count == 0 or comment_loaders_total == 0:
                     empty_count += 1
                     self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
 
