@@ -55,13 +55,18 @@ def update_all(site_ids, browser, logfile):
                     try:
                         update_one(article, browser, logfile)
                         log_handler(logfile, 'complete snapshoting article', article, 'SUCCESS')
+                    except NoSuchElementException as e:
+                        log_handler(logfile, 'failed snapshoting article', article, helper.print_error(e))
+                        raise NoSuchElementException
                     except Exception as e:
                         log_handler(logfile, 'failed snapshoting article', article, helper.print_error(e))
                         has_error = True
+                    
                     pbar.update(1)
             log_handler(logfile, 'complete snapshoting articles from site id = {}'.format(site_id), articles)
         except Exception as e:
             log_handler(logfile, 'failed snapshoting articles from site id = {}'.format(site_id), articles, helper.print_error(e))
+            return
 
 def update_one(article, browser, logfile):
     article_id = article['article_id']
@@ -98,7 +103,10 @@ def main():
                         help='update all posts in db')
     args = parser.parse_args()
     if args.all:
-        site_ids = [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65]
+        # site_ids = [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65]
+        # site_ids = [80, 87, 88, 89] bruceisawesomeandcool@gmail.com
+        site_ids = [60, 61, 62, 63, 64, 65]
+
         update_all(site_ids, browser, logfile)
     else:
         test(browser, logfile)

@@ -1,4 +1,5 @@
 import helper
+from selenium.common.exceptions import NoSuchElementException
 
 class PostCrawler:
     def __init__(self, url, browser, write_to_db, logfile, max_try_times=3):
@@ -22,6 +23,8 @@ class PostCrawler:
             self.expand_comment()
             raw_html = self.get_raw_html()
             self.write_to_db and self.write_to_db(raw_html)
+        else:
+            raise NoSuchElementException
 
     def get_raw_html(self):
         # return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
