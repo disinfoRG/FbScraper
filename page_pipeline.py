@@ -1,5 +1,5 @@
 import zlib
-import helper
+from helper import helper
 
 class PagePipeline:
     def __init__(self, post_urls, site_id, db_manager, logfile):

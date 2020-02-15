@@ -1,5 +1,5 @@
 import zlib
-import helper
+from helper import helper
 
 STATUS_SUCCESS = 'SUCCESS'
 STATUS_FAILED = 'FAILED'

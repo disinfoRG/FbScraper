@@ -1,20 +1,25 @@
-import helper
-from selenium.common.exceptions import NoSuchElementException
+from helper import helper
+from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
+import re
 
 class PostCrawler:
-    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3):
+    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=False, timeout=720):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.post_node = None
         self.write_to_db = write_to_db
         self.logfile = logfile
         self.max_try_times = max_try_times
+        self.is_logined = is_logined
+        self.start_at = None
+        self.timeout = timeout
 
     def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
         self.logfile.write(timestamp)        
 
     def crawl(self):
+        self.start_at = helper.now()
         self.logfile.write('\n')
         self.enter_site()
         is_located = self.locate_target_post()
@@ -28,6 +33,8 @@ class PostCrawler:
 
     def get_raw_html(self):
         # return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
+        # to get the "current" post node 
+        self.locate_target_post()
         return helper.get_html(self.post_node)
 
     def enter_site(self):
@@ -37,13 +44,17 @@ class PostCrawler:
             self.browser.get(post_root_url)
             success_status = 'crawler_timestamp_{}: successful to enter site with url "{}"'.format(helper.now(), post_root_url)
             self.logfile.write(success_status)
-            helper.wait()
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to enter site with url "{}", error is {}'.format(helper.now(), post_root_url, helper.print_error(e))
             self.logfile.write(failed_status)
+            
+        if not self.is_logined:
+            block_selector = '#expanding_cta_close_button'
+            helper.click_with_move(block_selector, self.browser, should_offset=True)
 
     def locate_target_post(self):
-        selector = '.permalinkPost'
+        selector = '.permalinkPost' if self.is_logined else '.userContentWrapper'
+        
         self.post_node = helper.get_element(self.browser, selector)
 
         if not self.post_node:
@@ -60,67 +71,99 @@ class PostCrawler:
             return
 
         self.turn_off_comment_filter()
+        helper.wait()
+
+        is_login_page = re.match('.*/login/.*', self.browser.current_url)
+        if is_login_page:
+            self.browser.back()
+            helper.wait()
+            self.locate_target_post()
+
         self.load_comment(0)
-        # self.load_comment(1)
+        self.load_comment(1)
 
     def turn_off_comment_filter(self):
-        selector = '[data-testid="UFI2ViewOptionsSelector/root"]'
+        display_comment_selector = '.userContentWrapper [data-testid="UFI2CommentsCount/root"]'
+        filter_menu_selector = '[data-testid="UFI2ViewOptionsSelector/root"] a[data-testid="UFI2ViewOptionsSelector/link"]'
+        unfiltered_option_selector = '[data-testid="UFI2ViewOptionsSelector/menuRoot"] [data-ordering="RANKED_UNFILTERED"]'
 
         try:
-            c_filter_button = self.post_node.find_element_by_css_selector(selector)
-
-            helper.click(c_filter_button, self.browser)
-            self.logfile.write('crawler_timestamp_{}: clicked comment filter button \n'.format(helper.now()))
+            if not self.is_logined:
+                helper.click_with_move(display_comment_selector, self.browser)
+                helper.wait()
+            helper.click_with_move(filter_menu_selector, self.browser, should_offset=True)
             helper.wait()
+            helper.click_with_move(unfiltered_option_selector, self.browser, should_offset=True)
+            # selector = '[data-testid="UFI2ViewOptionsSelector/root"]'
+            # c_filter_button = self.post_node.find_element_by_css_selector(selector)
 
-            c_filter_menu = helper.get_element(self.browser, '[data-testid="UFI2ViewOptionsSelector/menuRoot"]')
-            self.logfile.write('crawler_timestamp_{}: comment filter menu is shown \n'.format(helper.now()))
-            helper.wait()
+            # helper.click_with_move(c_filter_button, self.browser, should_offset=True)
+            # self.logfile.write('crawler_timestamp_{}: clicked comment filter button \n'.format(helper.now()))
+            # helper.wait()
 
-            c_no_filter = helper.get_element(c_filter_menu, '[data-ordering="RANKED_UNFILTERED"]')
-            helper.click(c_no_filter, self.browser)
-            self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" \n'.format(helper.now()))
-            helper.wait()
+            # c_filter_menu = helper.get_element(self.browser, '[data-testid="UFI2ViewOptionsSelector/menuRoot"]')
+            # self.logfile.write('crawler_timestamp_{}: comment filter menu is shown \n'.format(helper.now()))
+            # helper.wait()
+
+            # c_no_filter = helper.get_element(c_filter_menu, '[data-ordering="RANKED_UNFILTERED"]')
+            # helper.click_with_move(c_no_filter, self.browser, should_offset=True)
+            # self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" \n'.format(helper.now()))
+            # helper.wait()
         except Exception as e:
+            selector = '{} and {} and {}'.format(display_comment_selector,filter_menu_selector, unfiltered_option_selector)
             failed_status = 'crawler_timestamp_{}: failed to turn off comment filter with selector "{}", error is {} \n'.format(helper.now(), selector, helper.print_error(e))
             self.logfile.write(failed_status)
         
-    def load_comment(self, depth):
+    def load_comment(self, depth, clicked_max_times=50):
         comment_expander_selector = '[data-testid="UFI2CommentsPagerRenderer/pager_depth_{}"]'.format(depth)
 
         try:
+            clicked_count = 0
             empty_count = 0
-            while empty_count < self.max_try_times:
+            comment_loaders_total = 0
+            self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
+
+            while (helper.now() - self.start_at) < self.timeout and empty_count < self.max_try_times and clicked_count < clicked_max_times:
                 comment_loaders = self.post_node.find_elements_by_css_selector(comment_expander_selector)
                 comment_loaders_total = len(comment_loaders)
-                clicked_count = 0
-
+                is_clicked = False
                 if comment_loaders_total > 0:
-                    empty_count = 0
+                    try:
+                        is_clicked = helper.click_with_move(comment_expander_selector, self.browser, should_offset=True)
 
-                    for c_loader in comment_loaders:
-                        # print(c_loader.get_attribute('innerText'))
-                        is_clicked = helper.click(c_loader, self.browser)
-                        if is_clicked:
-                            helper.wait()
-                            clicked_count += 1
-                            self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
+                    except MoveTargetOutOfBoundsException as e:
+                        # https://www.facebook.com/photo.php?fbid=3321929767823884&set=p.3321929767823884&type=3&theater
+                        dialog_close_button = self.browser.find_element_by_link_text('關閉')
+                        if dialog_close_button is not None:
+                            cls_html = helper.get_html(dialog_close_button)
+                            helper.print_error(e, cls_html)
                         else:
-                            pass
-                elif clicked_count == 0 or comment_loaders_total == 0:
+                            helper.print_error(e)
+                        is_clicked = helper.click(close_button, self.browser)
+    
+                if not is_clicked:
                     empty_count += 1
-                    self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
+                else:
+                    clicked_count += 1
 
+                self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
                 helper.wait()
+                
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to load comment at depth level #{} with selector "{}", error is {} \n'.format(helper.now(), depth, comment_expander_selector, helper.print_error(e))
             self.logfile.write(failed_status)
 
 def main():
-    article_url = 'https://www.facebook.com/almondbrother/posts/3070894019610988'
+    # 12min = 12*60 = 720sec
+    # article_url = 'https://www.facebook.com/almondbrother/posts/3070894019610988'
+    # article_url = 'https://www.facebook.com/travelmoviemusic/posts/2780616305352791'
+    # article_url = 'https://www.facebook.com/twherohan/posts/2689813484589132'
+    # article_url = 'https://www.facebook.com/almondbrother/posts/725869957939281'
+    # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675'
+    article_url = 'https://www.facebook.com/eatnews/posts/488393351879106'
 
     from config import fb
-    fb.start()
+    fb.start(False)
     browser = fb.driver
 
     from logger import Logger
@@ -129,7 +172,7 @@ def main():
 
     pc = PostCrawler(article_url, browser, print, logfile)
     pc.crawl()
+    browser.quit()
     
-
 if __name__ == '__main__':
     main()

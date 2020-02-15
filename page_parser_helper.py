@@ -1,5 +1,5 @@
 import re
-import helper
+from helper import helper
 
 def get_post_url(post):
     anchors = post.select('[data-testid="story-subtitle"] a')

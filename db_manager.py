@@ -1,5 +1,5 @@
 import db
-import helper
+from helper import helper
 
 def get_rows_by_table(table, where):
     try:

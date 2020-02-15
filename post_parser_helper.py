@@ -1,4 +1,4 @@
-import helper
+from helper import helper
 
 def get_comment_url(comment_node):
     permalink_node = None

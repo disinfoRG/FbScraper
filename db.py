@@ -7,7 +7,7 @@ from sqlalchemy.sql import and_, or_, not_
 # self-defined
 import db_helper
 from settings import DB_URL
-import helper
+from helper import helper
 
 def connect_to_db():
     engine = create_engine(DB_URL)

@@ -2,15 +2,17 @@ import json
 import os
 import re
 import threading
+import random
 
 # self-defined
-import helper
+from helper import helper
 import db_manager
 from discover import main as discover
 # from update import update_one
 
 WORKER_TYPE_DISCOVER = 'discover'
 WORKER_TYPE_UPDATE = 'update'
+
 class FbController:
     def __init__(self, password_by_email):
         self.session_ids = []
@@ -23,9 +25,16 @@ class FbController:
         self.password_by_email = password_by_email
         self.thread_pool = []
 
+    def has_available_cookie(self):
+        available_cookie_ids = self.get_available_cookie_ids()
+        if len(available_cookie_ids) == 0:
+            if len(self.working_session_ids) == len(self.cookie_ids):
+                return False
+        return True
+
     def control(self):
         self.update_cookie_and_session_ids()
-        if len(self.working_session_ids) == len(self.cookie_ids):
+        if not self.has_available_cookie():
             return
 
         sites = db_manager.get_sites_tagged_need_to_discover()
@@ -40,34 +49,36 @@ class FbController:
         site_tasks = []
         article_tasks = []
         for cookie_id in available_cookie_ids:
+            task = {}
+            task['cookie_id'] = cookie_id
             if worker_type == WORKER_TYPE_DISCOVER and len(sites) > 0:
-                s = sites.pop(0)
-                task = {}
-                task['cookie_id'] = cookie_id
-                task['site'] = s
+                site = sites.pop(0)
+                task['site'] = site
                 site_tasks.append(task)
                 worker_type = WORKER_TYPE_UPDATE
             elif worker_type == WORKER_TYPE_UPDATE and len(articles) > 0:
-                a = articles.pop(0)
-                article_tasks.append(a)
+                article = articles.pop(0)
+                task['article'] = article
+                article_tasks.append(task)
                 worker_type = WORKER_TYPE_DISCOVER
             else:
                 break
 
-            for s_task in site_tasks:
-                t = threading.Thread(target=self.discover_site,args=[s_task])
-                t.daemon = False
-                self.thread_pool.append(t)
-            # for a_task in article_tasks:
-            #     t = threading.Thread(target=self.update_article,args=[a_task])
-            #     t.daemon = False
-            #     self.thread_pool.append(t)
+        for s_task in site_tasks:
+            t = threading.Thread(target=self.discover_site,args=[s_task])
+            t.daemon = False
+            self.thread_pool.append(t)
 
-            self.start()
+        for a_task in article_tasks:
+            t = threading.Thread(target=self.update_article,args=[a_task])
+            t.daemon = False
+            self.thread_pool.append(t)
+
+        self.start()
 
     def start(self):
-        if len(thread_pool) > 0:
-            for t in thread_pool:
+        if len(self.thread_pool) > 0:
+            for t in self.thread_pool:
                 t.start()
 
     def update_cookie_and_session_ids(self):
@@ -113,6 +124,14 @@ class FbController:
         if cookie_id in self.session_id_by_cookie_id:
             del self.session_id_by_cookie_id[cookie_id]
 
+    def kill_session_process(self, session_path):
+        session = {}
+        with open(session_path, 'r', encoding='utf-8') as f:
+            session = json.loads(f.read())
+        # from facebook import Facebook
+        # browser = Facebook.create_driver_with_session(session)
+        # browser.quit()
+        os.remove(session_path)
 
     def release_hanging_browsers(self):
         sids = self.hanging_session_ids
@@ -123,33 +142,46 @@ class FbController:
 
             if helper.has_file(session_path):
                 try:
-                    session = {}
-                    with open(session_path, 'r', encoding='utf-8') as f:
-                        session = json.loads(f.read())
-                    from facebook import Facebook
-                    browser = Facebook.create_driver_with_session(session)
-                    browser.quit()
-                    os.remove(session_path)
+                    self.kill_session_process(session_path)
                     self.release_session(sid, cid)
                 except Exception as e:
                     helper.print_error(e)
             
     def get_available_cookie_ids(self):
         return list(set(self.cookie_ids) - set(self.occupied_cookie_ids))
-
+    
     def discover_site(self, task):
         site = task['site']
         email = task['cookie_id']
         password = self.password_by_email[email]
-        
-        # db_manager.tag_site_working(site)
-        discover(is_controller_mode=True, controller_site=site, controller_email=email, controller_password=password)
-        # db_manager.tag_site_done(site)      
 
-    def update_article(self, article):
-        db_manager.tag_article_working(article)
-        update_one(article)
-        db_manager.tag_article_done(article)
+        cid = email
+        sid = int(random.uniform(2, 30000000000))
+        session_path = './z_testing_discover_siteid{}_{}_{}_working_session.json'.format(site['site_id'], cid, sid)
+        fworking = open(session_path, 'a', buffering=1)
+        fworking.write('discover is working')
+        fworking.close()
+
+
+        # db_manager.tag_site_working(site)
+        # discover(is_controller_mode=True, controller_site=site, controller_email=email, controller_password=password)
+        # db_manager.tag_site_done(site)
+
+    def update_article(self, task):
+        # db_manager.tag_article_working(article)
+        # update_one(article)
+        # db_manager.tag_article_done(article)
+
+        article = task['article']
+        email = task['cookie_id']
+        password = self.password_by_email[email]
+
+        cid = email
+        sid = int(random.uniform(2, 30000000000))
+        session_path = './z_testing_update_articleid{}_{}_{}_working_session.json'.format(article['article_id'], cid, sid)
+        fworking = open(session_path, 'a', buffering=1)
+        fworking.write('update is working')
+        fworking.close()        
     
 
 def main():

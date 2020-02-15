@@ -2,11 +2,14 @@ from tqdm import tqdm
 import argparse
 import os
 import sys
+from multiprocessing import Process
+from selenium.common.exceptions import NoSuchElementException
+import threading
 
 # self-defined
 from post_spider import PostSpider
 from logger import Logger
-import helper
+from helper import helper
 import db_manager
 
 
@@ -42,7 +45,7 @@ def update_all(site_ids, browser, logfile):
                             from facebook import Facebook
                             from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
                             fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, True, False)
-                            fb.start()
+                            fb.start(False)
                             running_browser = fb.driver
                             has_error = False
                             log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
@@ -54,7 +57,14 @@ def update_all(site_ids, browser, logfile):
 
                     try:
                         update_one(article, browser, logfile)
+                        # update_one_process = Process(target=update_one, args=[article, browser, logfile])
+                        # update_one_process.start()
+                        # update_one_process.join(timeout=10)
+
                         log_handler(logfile, 'complete snapshoting article', article, 'SUCCESS')
+
+                        # if update_one_process.exitcode is None:
+                        #     raise TimeoutError
                     except NoSuchElementException as e:
                         log_handler(logfile, 'failed snapshoting article', article, helper.print_error(e))
                         raise NoSuchElementException
@@ -67,7 +77,6 @@ def update_all(site_ids, browser, logfile):
         except Exception as e:
             log_handler(logfile, 'failed snapshoting articles from site id = {}'.format(site_id), articles, helper.print_error(e))
             return
-
 def update_one(article, browser, logfile):
     article_id = article['article_id']
     article_url = article['url']
@@ -87,6 +96,7 @@ def main():
 
     fpath = 'update_pid{}_timestamp{}.log'.format(pid, start_at)
     logfile = Logger(open(fpath, 'a', buffering=1))
+    # logfile = open(fpath, 'a', buffering=1)
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
 
@@ -95,7 +105,7 @@ def main():
     # sys.stderr = logfile
 
     from config import fb
-    fb.start()
+    fb.start(False)
     browser = fb.driver
 
     parser = argparse.ArgumentParser()
@@ -103,9 +113,9 @@ def main():
                         help='update all posts in db')
     args = parser.parse_args()
     if args.all:
-        # site_ids = [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65]
+        site_ids = [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65]
         # site_ids = [80, 87, 88, 89] bruceisawesomeandcool@gmail.com
-        site_ids = [60, 61, 62, 63, 64, 65]
+        # site_ids = [975]
 
         update_all(site_ids, browser, logfile)
     else:

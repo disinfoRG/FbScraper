@@ -7,7 +7,7 @@ import sys
 from page_spider import PageSpider
 from logger import Logger
 import db_manager
-import helper
+from helper import helper
 
 def log_handler(logfile, description, site, result=None):
     timestamp = None
