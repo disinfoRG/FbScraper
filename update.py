@@ -7,6 +7,7 @@ multiprocessing.set_start_method('spawn', True)
 from selenium.common.exceptions import NoSuchElementException
 import threading
 import random
+from urllib3.exceptions import MaxRetryError
 
 # self-defined
 from post_spider import PostSpider
@@ -67,6 +68,7 @@ def test(browser, logfile):
         pool_result = pool.starmap_async(update_one, product_names, 3)
 
 def update_one_by_parallel(article, should_show_progress=True):
+    errors = []
     pid = os.getpid()
     start_at = helper.now()
 
@@ -83,23 +85,39 @@ def update_one_by_parallel(article, should_show_progress=True):
     fb.start(False)
     browser = fb.driver
 
+    error_note = 'file_path = {}, article = {}'.format(fpath, article)
+    is_security_check = False
     try:
         update_one(article, browser, logfile)
+    except MaxRetryError:
+        # encountered security check for robot or login
+        is_security_check = True
+        error_msg = '[{}] Encountered robot-security check or login check and failed to update article, {} \n'.format(helper.now(), helper.print_error(e, error_note))
+        errors.append(error_msg)
+        logfile.write(error_msg)
     except Exception as e:
-        note = 'file_path = {}, article = {}'.format(fpath, article)
-        logfile.write('[{}] Failed to update article, {} \n'.format(helper.now(), helper.print_error(e, note)))
+        error_msg = '[{}] Failed to update article, {} \n'.format(helper.now(), helper.print_error(e, error_note))
+        errors.append(error_msg)
+        logfile.write(error_msg)
     
     try:
         browser.quit()
         logfile.write('[{}] Quit Browser, result is SUCCESS \n'.format(helper.now()))
     except Exception as e:
-        logfile.write('[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e, browser.current_url)))
+        error_msg = '[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e, browser.current_url))
+        errors.append(error_msg)
+        logfile.write(error_msg)
 
     end_at = helper.now()
     spent = end_at - start_at
     logfile.write('[{}] -------- FINISH --------, spent: {}, article: {} \n'.format(end_at, spent, article))
-    
     logfile.close()
+    
+    response = {}
+    response['errors'] = errors
+    response['is_security_check'] = is_security_check
+    response['url'] = article['url']
+    return response
 
 def countdown(period):
     with tqdm(desc='Snapshot Process Countdown', total=period) as pbar:
@@ -119,25 +137,34 @@ def main():
     article_tuples = helper.to_tuples(articles)
     article_chunks = helper.divide_chunks(article_tuples, n_amount_in_a_chunk)# [(articles[0],), (articles[1],)]
      
-    # for article in articles:
-    #     update_one_by_parallel(article)
-    
     with tqdm(desc='Update Article', total=len(articles)) as pbar:
         for n_article in article_chunks:
+            n_article_result = None
+            
             countdown_process = multiprocessing.Process(target=countdown,args=(timeout,))
             countdown_process.start()
 
             with multiprocessing.Pool(processes=n_amount_in_a_chunk) as pool:
                 pool_result = pool.starmap_async(update_one_by_parallel, n_article)
                 try:
-                    res = pool_result.get(timeout=timeout)
-                    print(res)
+                    n_article_result = pool_result.get(timeout=timeout)
+                    print(n_article_result)
                 except Exception as e:
                     helper.print_error(e)
             try:
                 countdown_process.terminate()
             except Exception as e:
                 helper.print_error(e)
+            
+            # facebook block the user for a while, so take a break
+            try:
+                for a_article_result in n_article_result:
+                    if a_article_result['is_security_check']:
+                        msg = '[{}] Encountered security check in details: {}. \n'.format(helper.now(), a_article_result)
+                        print(msg)
+                        return
+            except Exception as e:
+                helper.print_error(e)            
 
             pbar.update(n_amount_in_a_chunk)
 

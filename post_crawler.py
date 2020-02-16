@@ -1,6 +1,7 @@
 from helper import helper
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
+from urllib3.exceptions import MaxRetryError
 
 class PostCrawler:
     def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=False, timeout=720):
@@ -51,17 +52,25 @@ class PostCrawler:
             self.logfile.write(failed_status)
             
         if not self.is_logined:
-            window_block_selector = '#expanding_cta_close_button'
-            try:        
-                helper.click_with_move(window_block_selector, self.browser)
-            except Exception as e:
-                helper.print_error(e, window_block_selector)
+            # window_block_selector = '#expanding_cta_close_button'
+            # try:        
+            #     helper.click_with_move(window_block_selector, self.browser)
+            # except Exception as e:
+            #     helper.print_error(e, window_block_selector)
 
-            footer_block_selector = '#headerArea'
+            block_selector = '#headerArea'
             try:
-                helper.remove_element(footer_block_selector, self.browser)
+                helper.remove_element(block_selector, self.browser)
+                removed_block_text = 'crawler_timestamp_{}: removed block element for non-logined browsing with selector="{}" \n'.format(helper.now(), block_selector)
+                self.logfile.write(removed_block_text)
             except Exception as e:
-                helper.print_error(e, footer_block_selector)            
+                helper.print_error(e, block_selector)
+                is_robot_block = self.is_robot_check()
+                if is_robot:
+                    raise MaxRetryError
+                is_login_block = self.is_login_check()
+                if is_login_block:
+                    raise MaxRetryError
             
 
     def locate_target_post(self):
@@ -78,6 +87,22 @@ class PostCrawler:
             self.logfile.write(post_is_found)
             return True
 
+    def is_robot_check(self):
+        is_robot_url = re.match('.*/checkpoint.*', self.browser.current_url)
+        if is_robot_url:
+            return True
+        return False
+
+    def is_login_check(self):
+        is_login_url = re.match('.*/login.*', self.browser.current_url)
+        if is_login_url:
+            return True
+        # id of button with text: "忘記帳號？" but not the id for page of "稍後再說"
+        is_forced_login = True if len(self.browser.find_elements_by_css_selector('#login_link')) > 0 else False
+        if is_forced_login:
+            return True
+        return False
+
     def expand_comment(self):
         if not self.post_node:
             return
@@ -87,7 +112,7 @@ class PostCrawler:
         if self.should_turn_off_comment_filter:
             self.turn_off_comment_filter()
 
-        is_login_page = re.match('.*/login/.*', self.browser.current_url)
+        is_login_page = re.match('.*/login.*', self.browser.current_url)
         if is_login_page:
             self.browser.back()
             helper.wait()

@@ -70,7 +70,8 @@ class Helper:
             
     def remove_element(self, selector, driver):
         try:
-            node = self.wait_element(selector, driver, 'visibility_of_element_located')
+            expected_condition = 'presence_of_element_located' #'visibility_of_element_located'
+            node = self.wait_element(selector, driver, expected_condition)
             if node is not None:
                 script = "document.querySelector('{}').remove()".format(selector)
                 driver.execute_script(script)
