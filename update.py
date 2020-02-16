@@ -138,7 +138,7 @@ def main():
                 countdown_process.terminate()
             except Exception as e:
                 helper.print_error(e)
-                
+
             pbar.update(n_amount_in_a_chunk)
 
 def _main():
