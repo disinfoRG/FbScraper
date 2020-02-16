@@ -15,7 +15,6 @@ from logger import Logger
 from helper import helper
 import db_manager
 
-
 def log_handler(logfile, description, parameters, result=None):
     timestamp = None
 
