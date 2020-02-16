@@ -8,6 +8,14 @@ def get_rows_by_table(table, where):
         helper.print_error(e)
         return None 
 
+def get_articles_never_update(site_id=None):
+    sql_text = None
+    if site_id is not None:
+        sql_text = 'select * from Article where snapshot_count=0 and article_type="FBPost" and site_id={}'.format(site_id)
+    else:
+        sql_text = 'select * from Article where snapshot_count=0 and article_type="FBPost"'
+    return db.get_records(sql_text)
+
 def get_articles_need_to_update(site_id=None):
     sql_text = None
     now = helper.now()

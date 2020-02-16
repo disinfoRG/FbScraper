@@ -149,8 +149,8 @@ class Facebook:
         return self.configure_browser(browser_type, is_headless, executable_path, reuse_session_id, should_use_remote_webdriver, tried_count)
 
     def add_common_options(self, options):
-        options.add_argument("start-maximized"); # open Browser in maximized mode
-        options.add_argument("disable-infobars"); # disabling infobars
+        options.add_argument("--start-maximized"); # open Browser in maximized mode
+        # options.add_argument("--disable-infobars"); # disabling infobars
         options.add_argument("--disable-extensions"); # disabling extensions
     def add_headless_options(self, options):
         options.headless = True

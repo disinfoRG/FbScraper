@@ -13,6 +13,8 @@ class PostCrawler:
         self.is_logined = is_logined
         self.start_at = None
         self.timeout = timeout
+        self.should_load_comment = False
+        self.should_turn_off_comment_filter = False
 
     def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
@@ -49,8 +51,18 @@ class PostCrawler:
             self.logfile.write(failed_status)
             
         if not self.is_logined:
-            block_selector = '#expanding_cta_close_button'
-            helper.click_with_move(block_selector, self.browser, should_offset=True)
+            window_block_selector = '#expanding_cta_close_button'
+            try:        
+                helper.click_with_move(window_block_selector, self.browser)
+            except Exception as e:
+                helper.print_error(e, window_block_selector)
+
+            footer_block_selector = '#headerArea'
+            try:
+                helper.remove_element(footer_block_selector, self.browser)
+            except Exception as e:
+                helper.print_error(e, footer_block_selector)            
+            
 
     def locate_target_post(self):
         selector = '.permalinkPost' if self.is_logined else '.userContentWrapper'
@@ -70,8 +82,10 @@ class PostCrawler:
         if not self.post_node:
             return
 
-        self.turn_off_comment_filter()
-        helper.wait()
+        self.show_comment()
+
+        if self.should_turn_off_comment_filter:
+            self.turn_off_comment_filter()
 
         is_login_page = re.match('.*/login/.*', self.browser.current_url)
         if is_login_page:
@@ -79,21 +93,28 @@ class PostCrawler:
             helper.wait()
             self.locate_target_post()
 
-        self.load_comment(0)
-        self.load_comment(1)
+        if self.should_load_comment:
+            self.load_comment(0)
+            self.load_comment(1)
+
+    def show_comment(self):
+        if not self.is_logined:
+            display_comment_selector = '.userContentWrapper [data-testid="UFI2CommentsCount/root"]'
+            try:
+                helper.click_with_move(display_comment_selector, self.browser, timeout=0)
+                helper.wait()
+            except Exception as e:
+                helper.print_error(e, display_comment_selector)
 
     def turn_off_comment_filter(self):
-        display_comment_selector = '.userContentWrapper [data-testid="UFI2CommentsCount/root"]'
         filter_menu_selector = '[data-testid="UFI2ViewOptionsSelector/root"] a[data-testid="UFI2ViewOptionsSelector/link"]'
         unfiltered_option_selector = '[data-testid="UFI2ViewOptionsSelector/menuRoot"] [data-ordering="RANKED_UNFILTERED"]'
-
+        
         try:
-            if not self.is_logined:
-                helper.click_with_move(display_comment_selector, self.browser)
-                helper.wait()
-            helper.click_with_move(filter_menu_selector, self.browser, should_offset=True)
+            helper.click_with_move(filter_menu_selector, self.browser)
             helper.wait()
-            helper.click_with_move(unfiltered_option_selector, self.browser, should_offset=True)
+            helper.click_with_move(unfiltered_option_selector, self.browser)
+            helper.wait()
             # selector = '[data-testid="UFI2ViewOptionsSelector/root"]'
             # c_filter_button = self.post_node.find_element_by_css_selector(selector)
 
@@ -110,7 +131,7 @@ class PostCrawler:
             # self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" \n'.format(helper.now()))
             # helper.wait()
         except Exception as e:
-            selector = '{} and {} and {}'.format(display_comment_selector,filter_menu_selector, unfiltered_option_selector)
+            selector = '{} and {}'.format(filter_menu_selector, unfiltered_option_selector)
             failed_status = 'crawler_timestamp_{}: failed to turn off comment filter with selector "{}", error is {} \n'.format(helper.now(), selector, helper.print_error(e))
             self.logfile.write(failed_status)
         
@@ -129,7 +150,7 @@ class PostCrawler:
                 is_clicked = False
                 if comment_loaders_total > 0:
                     try:
-                        is_clicked = helper.click_with_move(comment_expander_selector, self.browser, should_offset=True)
+                        is_clicked = helper.click_with_move(comment_expander_selector, self.browser)
 
                     except MoveTargetOutOfBoundsException as e:
                         # https://www.facebook.com/photo.php?fbid=3321929767823884&set=p.3321929767823884&type=3&theater
@@ -159,8 +180,8 @@ def main():
     # article_url = 'https://www.facebook.com/travelmoviemusic/posts/2780616305352791'
     # article_url = 'https://www.facebook.com/twherohan/posts/2689813484589132'
     # article_url = 'https://www.facebook.com/almondbrother/posts/725869957939281'
-    # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675'
-    article_url = 'https://www.facebook.com/eatnews/posts/488393351879106'
+    article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675'
+    # article_url = 'https://www.facebook.com/eatnews/posts/488393351879106'
 
     from config import fb
     fb.start(False)

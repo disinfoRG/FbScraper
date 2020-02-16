@@ -21,24 +21,44 @@ class Helper:
         except:
             return False
 
+    def to_tuples(self, list_of_dictionary_items):
+        tuples = []
+        for dictionary_item in list_of_dictionary_items:
+            t = (dictionary_item,)
+            tuples.append(t)
+        return tuples
+
     # n = How many elements each list should have 
-    def divide_chunks(self, l, n=10): 
+    def divide_chunks(self, l, n=10, as_tuple=False): 
         # looping till length l 
+        chunks = []
         for i in range(0, len(l), n):  
-            yield l[i:i + n] 
+            c = None
+            if not as_tuple:
+                c = l[i:i + n] 
+            else:
+                c = tuple(l[i:i + n])
+            chunks.append(c)
+        return chunks
+                
 
     def print_error(self, e, note=None):
-        error_class = e.__class__.__name__ #取得錯誤類型
-        detail = e.args[0] #取得詳細內容
-        cl, exc, tb = sys.exc_info() #取得Call Stack
-        lastCallStack = traceback.extract_tb(tb)[-1] #取得Call Stack的最後一筆資料
-        fileName = lastCallStack[0] #取得發生的檔案名稱
-        lineNum = lastCallStack[1] #取得發生的行號
-        funcName = lastCallStack[2] #取得發生的函數名稱
-        exceptionType = type(e)
-        errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}, note: {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail, note)
-        sys.stderr.write(errMsg)
-        return errMsg
+        try:
+            error_class = e.__class__.__name__ #取得錯誤類型
+            detail = e.args[0] #取得詳細內容
+            cl, exc, tb = sys.exc_info() #取得Call Stack
+            lastCallStack = traceback.extract_tb(tb)[-1] #取得Call Stack的最後一筆資料
+            fileName = lastCallStack[0] #取得發生的檔案名稱
+            lineNum = lastCallStack[1] #取得發生的行號
+            funcName = lastCallStack[2] #取得發生的函數名稱
+            exceptionType = type(e)
+            errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}, note: {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail, note)
+            sys.stderr.write(errMsg)
+            return errMsg
+        except:
+            errMsg = "Exception: {}, note: {}".format(str(e), note)
+            sys.stderr.write(errMsg)
+            return e
 
     def get_clean_url(self, url):
         host_url = 'https://www.facebook.com/'
@@ -47,15 +67,24 @@ class Helper:
             url.split('&')[0]
         else:
             return url.split('?')[0]
+            
+    def remove_element(self, selector, driver):
+        try:
+            node = self.wait_element(selector, driver, 'visibility_of_element_located')
+            if node is not None:
+                script = "document.querySelector('{}').remove()".format(selector)
+                driver.execute_script(script)
+        except Exception as e:
+            self.print_error(e, selector)
 
-    def click_with_move(self, selector, driver, timeout=10, has_tried_count=0, should_offset=False):
+    def click_with_move(self, selector, driver, timeout=5, has_tried_count=0, should_offset=False):
         try:
             node = self.wait_element(selector, driver, 'element_to_be_clickable', timeout)
             ActionChains(driver).move_to_element(node).perform()
             if should_offset:
                 self.scroll_more(driver)
-            # ActionChains(driver).move_to_element(node).click(node).perform()
-            node.click()
+            ActionChains(driver).click(node).perform()
+            # node.click()
             return True
         except StaleElementReferenceException as e:
             self.print_error(e, selector)
@@ -71,7 +100,7 @@ class Helper:
         #     return False
         # return self.click_without_move(selector, driver, timeout, has_tried_count)
 
-    def click_without_move(self, selector, driver, timeout=10, has_tried_count=0):
+    def click_without_move(self, selector, driver, timeout=5, has_tried_count=0):
         try:
             ele = self.wait_element(selector, driver, 'element_to_be_clickable', timeout)
             ele.click()
@@ -146,12 +175,12 @@ class Helper:
             return None
 
 
-    def wait_element(self, selector, driver, expected_condition='presence_of_element_located', timeout=10):
+    def wait_element(self, selector, driver, expected_condition='presence_of_element_located', timeout=5):
         wait = WebDriverWait(driver, timeout=timeout)
         condition = getattr(EC, expected_condition)((By.CSS_SELECTOR, selector))
         return wait.until(condition)
 
-    def keyin_by_selector(self, selector, value, driver, timeout=10):
+    def keyin_by_selector(self, selector, value, driver, timeout=5):
         ele = self.wait_element(selector, driver, timeout=timeout)
         ele.clear()
         ele.send_keys(value)
