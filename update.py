@@ -160,9 +160,7 @@ def main():
                     if a_article_result['is_security_check']:
                         msg = '[{}] Encountered security check in details: {}. \n'.format(helper.now(), a_article_result)
                         print(msg)
-                        expected_recover_time = 60*60
-                        countdown(expected_recover_time, 'Security Check Cooldown')
-                        break
+                        return
             except Exception as e:
                 helper.print_error(e)            
 
