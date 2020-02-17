@@ -11,6 +11,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import MoveTargetOutOfBoundsException, ElementClickInterceptedException, StaleElementReferenceException
 
+class SelfDefinedError(Exception):
+    pass
 class Helper:
     def __init__(self):
         return
@@ -68,19 +70,28 @@ class Helper:
         else:
             return url.split('?')[0]
             
-    def remove_element(self, selector, driver):
+    def remove_element_by_selector(self, selector, driver):
         try:
             expected_condition = 'presence_of_element_located' #'visibility_of_element_located'
-            node = self.wait_element(selector, driver, expected_condition)
+            node = self.wait_element_by_selector(selector, driver, expected_condition)
             if node is not None:
                 script = "document.querySelector('{}').remove()".format(selector)
                 driver.execute_script(script)
         except Exception as e:
             self.print_error(e, selector)
+            raise
+
+    def move_to_element_by_selector(self, selector, driver):
+        try:
+            node = self.wait_element_by_selector(selector, driver)
+            ActionChains(driver).move_to_element(node).perform()
+        except Exception as e:
+            self.print_error(e, selector)
+            raise            
 
     def click_with_move(self, selector, driver, timeout=5, has_tried_count=0, should_offset=False):
         try:
-            node = self.wait_element(selector, driver, 'element_to_be_clickable', timeout)
+            node = self.wait_element_by_selector(selector, driver, 'element_to_be_clickable', timeout)
             ActionChains(driver).move_to_element(node).perform()
             if should_offset:
                 self.scroll_more(driver)
@@ -103,7 +114,7 @@ class Helper:
 
     def click_without_move(self, selector, driver, timeout=5, has_tried_count=0):
         try:
-            ele = self.wait_element(selector, driver, 'element_to_be_clickable', timeout)
+            ele = self.wait_element_by_selector(selector, driver, 'element_to_be_clickable', timeout)
             ele.click()
             return True
         except StaleElementReferenceException as e:
@@ -176,13 +187,13 @@ class Helper:
             return None
 
 
-    def wait_element(self, selector, driver, expected_condition='presence_of_element_located', timeout=5):
+    def wait_element_by_selector(self, selector, driver, expected_condition='presence_of_element_located', timeout=5):
         wait = WebDriverWait(driver, timeout=timeout)
         condition = getattr(EC, expected_condition)((By.CSS_SELECTOR, selector))
         return wait.until(condition)
 
     def keyin_by_selector(self, selector, value, driver, timeout=5):
-        ele = self.wait_element(selector, driver, timeout=timeout)
+        ele = self.wait_element_by_selector(selector, driver, timeout=timeout)
         ele.clear()
         ele.send_keys(value)
         driver.implicitly_wait(1)

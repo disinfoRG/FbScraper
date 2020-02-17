@@ -7,12 +7,11 @@ multiprocessing.set_start_method('spawn', True)
 from selenium.common.exceptions import NoSuchElementException
 import threading
 import random
-from urllib3.exceptions import MaxRetryError
 
 # self-defined
 from post_spider import PostSpider
 from logger import Logger
-from helper import helper
+from helper import helper, SelfDefinedError
 import db_manager
 
 def log_handler(logfile, description, parameters, result=None):
@@ -88,10 +87,10 @@ def update_one_by_parallel(article, should_show_progress=True):
     is_security_check = False
     try:
         update_one(article, browser, logfile)
-    except MaxRetryError:
+    except SelfDefinedError as e:
         # encountered security check for robot or login
         is_security_check = True
-        error_msg = '[{}] Encountered robot-security check or login check and failed to update article, {} \n'.format(helper.now(), helper.print_error(e, error_note))
+        error_msg = '[{}] Encountered security check and failed to update article, {} \n'.format(helper.now(), helper.print_error(e, error_note))
         errors.append(error_msg)
         logfile.write(error_msg)
     except Exception as e:
@@ -118,8 +117,8 @@ def update_one_by_parallel(article, should_show_progress=True):
     response['url'] = article['url']
     return response
 
-def countdown(period):
-    with tqdm(desc='Snapshot Process Countdown', total=period) as pbar:
+def countdown(period, desc='Snapshot Process Countdown'):
+    with tqdm(desc=desc, total=period) as pbar:
         for i in range(period):
             helper.wait(1)
             pbar.update(1)
@@ -135,7 +134,7 @@ def main():
     random.shuffle(articles)
     article_tuples = helper.to_tuples(articles)
     article_chunks = helper.divide_chunks(article_tuples, n_amount_in_a_chunk)# [(articles[0],), (articles[1],)]
-     
+
     with tqdm(desc='Update Article', total=len(articles)) as pbar:
         for n_article in article_chunks:
             n_article_result = None
@@ -161,7 +160,9 @@ def main():
                     if a_article_result['is_security_check']:
                         msg = '[{}] Encountered security check in details: {}. \n'.format(helper.now(), a_article_result)
                         print(msg)
-                        return
+                        expected_recover_time = 60*60
+                        countdown(expected_recover_time, 'Security Check Cooldown')
+                        break
             except Exception as e:
                 helper.print_error(e)            
 

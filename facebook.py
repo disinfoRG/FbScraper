@@ -60,7 +60,7 @@ class Facebook:
         logined_selector = '#sideNav'
 
         try:
-            helper.wait_element(logined_selector, self.driver)
+            helper.wait_element_by_selector(logined_selector, self.driver)
             print(' -----  login success')
             return True
         except:

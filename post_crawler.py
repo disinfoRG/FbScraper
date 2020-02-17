@@ -1,7 +1,6 @@
-from helper import helper
+from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
-from urllib3.exceptions import MaxRetryError
 
 class PostCrawler:
     def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=False, timeout=720):
@@ -57,20 +56,22 @@ class PostCrawler:
             #     helper.click_with_move(window_block_selector, self.browser)
             # except Exception as e:
             #     helper.print_error(e, window_block_selector)
-
+            helper.scroll(self.browser)
             block_selector = '#headerArea'
             try:
-                helper.remove_element(block_selector, self.browser)
+                helper.remove_element_by_selector(block_selector, self.browser)
                 removed_block_text = 'crawler_timestamp_{}: removed block element for non-logined browsing with selector="{}" \n'.format(helper.now(), block_selector)
                 self.logfile.write(removed_block_text)
             except Exception as e:
                 helper.print_error(e, block_selector)
                 is_robot_block = self.is_robot_check()
-                if is_robot:
-                    raise MaxRetryError
+                
+                if is_robot_block:
+                    raise SelfDefinedError('Encountered security check if user is a robot')
                 is_login_block = self.is_login_check()
                 if is_login_block:
-                    raise MaxRetryError
+                    raise SelfDefinedError('Encountered security check requiring user to login')
+                raise
             
 
     def locate_target_post(self):
@@ -91,6 +92,9 @@ class PostCrawler:
         is_robot_url = re.match('.*/checkpoint.*', self.browser.current_url)
         if is_robot_url:
             return True
+        is_forced_robot_verify = True if len(self.browser.find_elements_by_css_selector('#captcha')) > 0 else False
+        if is_forced_robot_verify:
+            return True
         return False
 
     def is_login_check(self):
@@ -98,8 +102,8 @@ class PostCrawler:
         if is_login_url:
             return True
         # id of button with text: "忘記帳號？" but not the id for page of "稍後再說"
-        is_forced_login = True if len(self.browser.find_elements_by_css_selector('#login_link')) > 0 else False
-        if is_forced_login:
+        is_forced_login_verify = True if len(self.browser.find_elements_by_css_selector('#login_link')) > 0 else False
+        if is_forced_login_verify:
             return True
         return False
 
@@ -132,14 +136,18 @@ class PostCrawler:
                 helper.print_error(e, display_comment_selector)
 
     def turn_off_comment_filter(self):
-        filter_menu_selector = '[data-testid="UFI2ViewOptionsSelector/root"] a[data-testid="UFI2ViewOptionsSelector/link"]'
+        filter_menu_link_selector = '[data-testid="UFI2ViewOptionsSelector/root"] [data-testid="UFI2ViewOptionsSelector/link"]'
+        filter_menu_selector = '[data-testid="UFI2ViewOptionsSelector/menuRoot"]'
         unfiltered_option_selector = '[data-testid="UFI2ViewOptionsSelector/menuRoot"] [data-ordering="RANKED_UNFILTERED"]'
         
         try:
-            helper.click_with_move(filter_menu_selector, self.browser)
-            helper.wait()
+            helper.click_with_move(filter_menu_link_selector, self.browser)
+            self.logfile.write('crawler_timestamp_{}: clicked comment filter button with selector="{}" \n'.format(helper.now(), filter_menu_link_selector))
+            helper.move_to_element_by_selector(filter_menu_selector, self.browser)
+            self.logfile.write('crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(helper.now(), filter_menu_selector))
             helper.click_with_move(unfiltered_option_selector, self.browser)
-            helper.wait()
+            self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(helper.now(), unfiltered_option_selector))
+
             # selector = '[data-testid="UFI2ViewOptionsSelector/root"]'
             # c_filter_button = self.post_node.find_element_by_css_selector(selector)
 
@@ -156,7 +164,7 @@ class PostCrawler:
             # self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" \n'.format(helper.now()))
             # helper.wait()
         except Exception as e:
-            selector = '{} and {}'.format(filter_menu_selector, unfiltered_option_selector)
+            selector = '{} and {}'.format(filter_menu_link_selector, unfiltered_option_selector)
             failed_status = 'crawler_timestamp_{}: failed to turn off comment filter with selector "{}", error is {} \n'.format(helper.now(), selector, helper.print_error(e))
             self.logfile.write(failed_status)
         
