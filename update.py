@@ -127,11 +127,13 @@ def update_one_dummy(article):
     print(article)
 
 def main():
+    max_amount_of_articles = 1000
     n_amount_in_a_chunk = 4
     timeout = 60
+    
     articles = db_manager.get_articles_never_update()
-
     random.shuffle(articles)
+    articles = articles[:max_amount_of_articles]
     article_tuples = helper.to_tuples(articles)
     article_chunks = helper.divide_chunks(article_tuples, n_amount_in_a_chunk)# [(articles[0],), (articles[1],)]
 
