@@ -63,16 +63,9 @@ def get_articles_by_site_id(site_id):
     where = 'site_id={}'.format(site_id)
     return db.get_single_value_of_records_from_table('Article', 'url', where)
 
-def get_sites_need_to_crawl():
-    return db.get_fb_page_list()
+def get_sites_need_to_crawl(site_type='fb_page'):
+    return db.get_site_list(site_type)
     # return db.get_sites_need_to_crawl()
-
-def get_fb_page_list():
-    try:
-        return db.get_fb_page_list()
-    except Exception as e:
-        helper.print_error(e)
-        return None    
 
 def insert_article(article_obj):
     db_article_type = article_obj['article_type']

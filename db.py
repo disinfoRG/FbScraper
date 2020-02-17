@@ -73,13 +73,13 @@ def get_sites_need_to_crawl():
     exe = connection.execute(stmt)
     return [dict(x) for x in exe.fetchall()]
 
-def get_fb_page_list():
+def get_site_list(site_type):
     # select * from Site where is_active=1 and type='fb_page';
     site_table = tables["Site"]
     query = db.select([site_table.c.site_id, site_table.c.name, site_table.c.url]).where(
         db.and_(
-            site_table.c.is_active == 1,
-            site_table.c.type == 'fb_page',
+            # site_table.c.is_active == 1,
+            site_table.c.type == site_type,
         )        
     )
     site_infos = [dict(x) for x in connection.execute(query).fetchall()]

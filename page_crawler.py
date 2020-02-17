@@ -5,13 +5,14 @@ from bs4 import BeautifulSoup
 MAX_TRY_TIMES_DEFAULT = 3
 
 class PageCrawler:
-    def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=MAX_TRY_TIMES_DEFAULT):
+    def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=MAX_TRY_TIMES_DEFAULT, should_use_original_url=False):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
         self.max_try_times = max_try_times if max_try_times else MAX_TRY_TIMES_DEFAULT
         self.write_to_db_func = write_to_db_func
         self.logfile = logfile
+        self.should_use_original_url = should_use_original_url
 
     def crawl(self):
         self.logfile.write('\n')
@@ -20,10 +21,11 @@ class PageCrawler:
 
     def enter_site(self):
         post_root_url = self.url
-        if post_root_url.endswith('/'):
-            post_root_url += 'posts'
-        else:
-            post_root_url += '/posts'
+        if not self.should_use_original_url:
+            if post_root_url.endswith('/'):
+                post_root_url += 'posts'
+            else:
+                post_root_url += '/posts'
         self.browser.get(post_root_url)
         helper.wait()
 
@@ -43,7 +45,8 @@ class PageCrawler:
             # height_before, height_after = self.scroll()
             # if height_after <= height_before:
             #     break
-            self.scroll()
+            helper.scroll(self.browser)
+            helper.wait()
 
             post_urls = self.get_post_urls()
             viewed_count = len(post_urls)
