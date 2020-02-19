@@ -19,11 +19,19 @@ DISCOVER_ACTION = 'discover'
 UPDATE_ACTION = 'update'
 GROUP_SITE_TYPE = 'fb_public_group'
 PAGE_SITE_TYPE = 'fb_page'
+DISCOVER_TIMEOUT = 60*60
+UPDATE_TIMEOUT = 60*10
 
 class Handler:
-    def __init__(self, action, site_type):
+    def __init__(self, action, site_type, is_logined=False, timeout=60*60, is_headless=True, max_amount_of_items=1, n_amount_in_a_chunk=1):
         self.action = action
         self.site_type = site_type
+        self.is_logined = is_logined
+        self.timeout = timeout
+        self.is_headless = is_headless
+        self.max_amount_of_items = max_amount_of_items
+        self.n_amount_in_a_chunk = n_amount_in_a_chunk
+        
 
     def log_handler(self, logfile, description, parameters, result=None):
         timestamp = None
@@ -69,8 +77,11 @@ class Handler:
             sys.stderr = logfile
         logfile.write('[{}] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, self.action, self.site_type, item))
 
-        from config import fb
-        fb.start(False)
+        from facebook import Facebook
+        from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
+
+        fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
+        fb.start(self.is_logined)
         browser = fb.driver
 
         error_note = 'file_path = {}, item = {}'.format(fpath, item)
@@ -104,7 +115,7 @@ class Handler:
         response = {}
         response['errors'] = errors
         response['is_security_check'] = is_security_check
-        response['url'] = article['url']
+        response['url'] = item['url']
         return response
 
     def countdown(self, period, desc='Item Process Countdown'):
@@ -113,30 +124,30 @@ class Handler:
                 helper.wait(1)
                 pbar.update(1)
 
-    def handle(self, max_amount_of_items=1000, n_amount_in_a_chunk=4, timeout=60):
+    def handle(self):
         items = []
         if self.action == UPDATE_ACTION and self.site_type == PAGE_SITE_TYPE:
             items = db_manager.get_articles_never_update()
-        elif self.action == DISCOVER_ACTION and self.site_type == GROUP_SITE_TYPE:
-            items = db_manager.get_sites_need_to_crawl(GROUP_SITE_TYPE)
+        elif self.action == DISCOVER_ACTION:
+            items = db_manager.get_sites_need_to_crawl(self.site_type)
 
         random.shuffle(items)
-        items = items[:max_amount_of_items]
+        items = items[:self.max_amount_of_items]
         item_tuples = helper.to_tuples(items)
-        item_chunks = helper.divide_chunks(item_tuples, n_amount_in_a_chunk)
+        item_chunks = helper.divide_chunks(item_tuples, self.n_amount_in_a_chunk)
 
         desc = '{} {}'.format(self.action, self.site_type)
         with tqdm(desc=desc, total=len(items)) as pbar:
             for n_item in item_chunks:
                 n_item_result = None
                 
-                countdown_process = multiprocessing.Process(target=self.countdown,args=(timeout,))
+                countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
                 countdown_process.start()
 
-                with multiprocessing.Pool(processes=n_amount_in_a_chunk) as pool:
+                with multiprocessing.Pool(processes=self.n_amount_in_a_chunk) as pool:
                     pool_result = pool.starmap_async(self.process_item, n_item)
                     try:
-                        n_item_result = pool_result.get(timeout=timeout)
+                        n_item_result = pool_result.get(timeout=self.timeout)
                         print(n_item_result)
                     except Exception as e:
                         helper.print_error(e)
@@ -155,31 +166,43 @@ class Handler:
                 except Exception as e:
                     helper.print_error(e)            
 
-                pbar.update(n_amount_in_a_chunk)
+                pbar.update(self.n_amount_in_a_chunk)
 
 def main():
     argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument('-d', '--discover', action='store_true', help='discover articles for a site')
-    argument_parser.add_argument('-u', '--update', action='store_true', help='update articles for a site')    
+    argument_parser.add_argument('-d', '--discover', action='store_true', help='save article urls for sites')
+    argument_parser.add_argument('-u', '--update', action='store_true', help='save html for articles')    
     argument_parser.add_argument('-g', '--group', action='store_true', help='facebook group')
     argument_parser.add_argument('-p', '--page', action='store_true', help='facebook page')    
+    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')
     args = argument_parser.parse_args()
 
     action = None
     site_type = None
+    timeout = None
 
     if args.discover:
         action = DISCOVER_ACTION
+        timeout = DISCOVER_TIMEOUT
     elif args.update:
         action = UPDATE_ACTION
+        timeout = UPDATE_TIMEOUT
 
     if args.group:
         site_type = GROUP_SITE_TYPE
     elif args.page:
         site_type = PAGE_SITE_TYPE
 
-    main_handler = Handler(action, site_type)
+    if args.timeout:
+        timeout = int(args.timeout)
+
+    max_amount_of_items = 1000
+    n_amount_in_a_chunk = 4
+    is_headless = True
+    is_logined = False
+    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, is_headless=is_headless)
     main_handler.handle()
+    
 
 if __name__ == '__main__':
     main()
