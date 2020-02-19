@@ -1,9 +1,10 @@
 from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
+from config import DEFAULT_IS_LOGINED
 
 class PostCrawler:
-    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=False, timeout=720):
+    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=720):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.post_node = None

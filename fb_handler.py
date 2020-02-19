@@ -14,16 +14,10 @@ from page_spider import PageSpider
 from logger import Logger
 from helper import helper, SelfDefinedError
 import db_manager
-
-DISCOVER_ACTION = 'discover'
-UPDATE_ACTION = 'update'
-GROUP_SITE_TYPE = 'fb_public_group'
-PAGE_SITE_TYPE = 'fb_page'
-DISCOVER_TIMEOUT = 60*60
-UPDATE_TIMEOUT = 60*10
+from config import DISCOVER_ACTION, UPDATE_ACTION, GROUP_SITE_TYPE, PAGE_SITE_TYPE, DISCOVER_TIMEOUT, UPDATE_TIMEOUT, DEFAULT_IS_LOGINED, DEFAULT_IS_HEADLESS, DEFAULT_MAX_AMOUNT_OF_ITEMS, DEFAULT_N_AMOUNT_IN_A_CHUNK
 
 class Handler:
-    def __init__(self, action, site_type, is_logined=False, timeout=60*60, is_headless=True, max_amount_of_items=1, n_amount_in_a_chunk=1):
+    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk):
         self.action = action
         self.site_type = site_type
         self.is_logined = is_logined
@@ -31,7 +25,6 @@ class Handler:
         self.is_headless = is_headless
         self.max_amount_of_items = max_amount_of_items
         self.n_amount_in_a_chunk = n_amount_in_a_chunk
-        
 
     def log_handler(self, logfile, description, parameters, result=None):
         timestamp = None
@@ -44,7 +37,7 @@ class Handler:
     def update_one(self, article, browser, logfile, is_group_site_type):
         article_id = article['article_id']
         article_url = article['url']
-        ps = PostSpider(article_url, article_id, browser, logfile)
+        ps = PostSpider(article_url, article_id, browser, logfile, is_logined=self.is_logined)
         ps.work()
 
     def discover_one(self, site, browser, logfile, is_group_site_type, max_try_times=None):
@@ -126,8 +119,8 @@ class Handler:
 
     def handle(self):
         items = []
-        if self.action == UPDATE_ACTION and self.site_type == PAGE_SITE_TYPE:
-            items = db_manager.get_articles_never_update()
+        if self.action == UPDATE_ACTION:
+            items = db_manager.get_articles_never_update(self.site_type)
         elif self.action == DISCOVER_ACTION:
             items = db_manager.get_sites_need_to_crawl(self.site_type)
 
@@ -174,12 +167,20 @@ def main():
     argument_parser.add_argument('-u', '--update', action='store_true', help='save html for articles')    
     argument_parser.add_argument('-g', '--group', action='store_true', help='facebook group')
     argument_parser.add_argument('-p', '--page', action='store_true', help='facebook page')    
-    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')
+    argument_parser.add_argument('-l', '--login', action='store_true', help='apply facebook login, default is without login')
+    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')    
+    argument_parser.add_argument('-nh', '--non-headless', action='store_true', help='browser in non-headless mode, default is headless')
+    argument_parser.add_argument('-m', '--max', action='store', help='max amount of sites(by discover) or articles(by update) want to be accomplished, default is 2')
+    argument_parser.add_argument('-c', '--cpu', action='store', help='how many cpu processes run at the same time, default is 2')
     args = argument_parser.parse_args()
 
     action = None
     site_type = None
+    is_logined = DEFAULT_IS_LOGINED    
     timeout = None
+    is_headless = DEFAULT_IS_HEADLESS
+    max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
+    n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK
 
     if args.discover:
         action = DISCOVER_ACTION
@@ -187,20 +188,44 @@ def main():
     elif args.update:
         action = UPDATE_ACTION
         timeout = UPDATE_TIMEOUT
+    else:
+        return
 
     if args.group:
         site_type = GROUP_SITE_TYPE
     elif args.page:
         site_type = PAGE_SITE_TYPE
+    else:
+        return
+
+    if args.login:
+        is_logined = True
 
     if args.timeout:
-        timeout = int(args.timeout)
+        try:
+            timeout = int(args.timeout)
+        except Exception as e:
+            helper.print_error(e)
+            raise
 
-    max_amount_of_items = 1000
-    n_amount_in_a_chunk = 4
-    is_headless = True
-    is_logined = False
-    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, is_headless=is_headless)
+    if args.non_headless:
+        is_headless = False
+
+    if args.max:
+        try:
+            max_amount_of_items = int(args.max)
+        except Exception as e:
+            helper.print_error(e)
+            raise
+    
+    if args.cpu:
+        try:
+            n_amount_in_a_chunk = int(args.cpu)
+        except Exception as e:
+            helper.print_error(e)
+            raise        
+
+    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk)
     main_handler.handle()
     
 

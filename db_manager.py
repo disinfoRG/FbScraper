@@ -1,5 +1,6 @@
 import db
 from helper import helper
+from config import PAGE_SITE_TYPE, GROUP_SITE_TYPE
 
 def get_rows_by_table(table, where):
     try:
@@ -8,7 +9,7 @@ def get_rows_by_table(table, where):
         helper.print_error(e)
         return None 
 
-def get_articles_never_update(site_id=None):
+def get_articles_never_update(site_type, site_id=None):
     sql_text = None
     if site_id is not None:
         sql_text = 'select * from Article where snapshot_count=0 and article_type="FBPost" and site_id={}'.format(site_id)
