@@ -14,8 +14,8 @@ class PostCrawler:
         self.is_logined = is_logined
         self.start_at = None
         self.timeout = timeout
-        self.should_load_comment = False
-        self.should_turn_off_comment_filter = False
+        self.should_load_comment = True
+        self.should_turn_off_comment_filter = True
 
     def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
@@ -45,19 +45,29 @@ class PostCrawler:
 
         try:
             self.browser.get(post_root_url)
+            helper.scroll(self.browser)
+
+            is_robot_block = self.is_robot_check()
+            if is_robot_block:
+                raise SelfDefinedError('Encountered security check if user is a robot')
+
+            is_login_block = self.is_login_check()
+            if is_login_block:
+                raise SelfDefinedError('Encountered security check requiring user to login')
+
             success_status = 'crawler_timestamp_{}: successful to enter site with url "{}"'.format(helper.now(), post_root_url)
             self.logfile.write(success_status)
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to enter site with url "{}", error is {}'.format(helper.now(), post_root_url, helper.print_error(e))
             self.logfile.write(failed_status)
-            
+            raise
+
         if not self.is_logined:
             # window_block_selector = '#expanding_cta_close_button'
             # try:        
             #     helper.click_with_move(window_block_selector, self.browser)
             # except Exception as e:
             #     helper.print_error(e, window_block_selector)
-            helper.scroll(self.browser)
             block_selector = '#headerArea'
             try:
                 helper.remove_element_by_selector(block_selector, self.browser)
@@ -65,12 +75,6 @@ class PostCrawler:
                 self.logfile.write(removed_block_text)
             except Exception as e:
                 helper.print_error(e, block_selector)
-                is_robot_block = self.is_robot_check()
-                if is_robot_block:
-                    raise SelfDefinedError('Encountered security check if user is a robot')
-                is_login_block = self.is_login_check()
-                if is_login_block:
-                    raise SelfDefinedError('Encountered security check requiring user to login')
 
     def locate_target_post(self):
         selector = '.permalinkPost' if self.is_logined else '.userContentWrapper'
@@ -205,16 +209,26 @@ class PostCrawler:
             failed_status = 'crawler_timestamp_{}: failed to load comment at depth level #{} with selector "{}", error is {} \n'.format(helper.now(), depth, comment_expander_selector, helper.print_error(e))
             self.logfile.write(failed_status)
 
+def test_robot_check(url):
+    is_robot_url = re.match('.*/checkpoint.*', url)
+    if is_robot_url:
+        return True
+    return False    
+
 def main():
     # 12min = 12*60 = 720sec
     # article_url = 'https://www.facebook.com/almondbrother/posts/3070894019610988'
     # article_url = 'https://www.facebook.com/travelmoviemusic/posts/2780616305352791'
     # article_url = 'https://www.facebook.com/twherohan/posts/2689813484589132'
     # article_url = 'https://www.facebook.com/almondbrother/posts/725869957939281'
-    article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675'
-    # article_url = 'https://www.facebook.com/eatnews/posts/488393351879106'
+    # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675'
+    article_url = 'https://www.facebook.com/eatnews/posts/488393351879106'
+    # article_url = 'https://www.facebook.com/lovebakinglovehealthy/posts/1970662936284274'
 
-    from config import fb
+    from facebook import Facebook
+    from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
+
+    fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, False)
     fb.start(False)
     browser = fb.driver
 
