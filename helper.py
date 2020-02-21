@@ -147,12 +147,13 @@ class Helper:
     def now(self):
         return int(datetime.now().timestamp())
 
+    def random_int(self, max, min=0):
+        return int(random.uniform(min, max))
 
     def wait(self, seconds=None):
         if not seconds:
             seconds = random.uniform(2, 3)
         time.sleep(seconds)
-
 
     def data_testidify(self, selector):
         return '[data-testid="{}"]'.format(selector)
@@ -329,4 +330,6 @@ def main():
     print('hold')
 
 if __name__ == "__main__":
-    main()
+    from config import DEFAULT_BREAK_BETWEEN_PROCESS
+    break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS)
+    print()

@@ -9,15 +9,29 @@ import threading
 import random
 
 # self-defined
+from facebook import Facebook
+from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from post_spider import PostSpider
 from page_spider import PageSpider
 from logger import Logger
 from helper import helper, SelfDefinedError
 import db_manager
-from config import DISCOVER_ACTION, UPDATE_ACTION, GROUP_SITE_TYPE, PAGE_SITE_TYPE, DISCOVER_TIMEOUT, UPDATE_TIMEOUT, DEFAULT_IS_LOGINED, DEFAULT_IS_HEADLESS, DEFAULT_MAX_AMOUNT_OF_ITEMS, DEFAULT_N_AMOUNT_IN_A_CHUNK
-
+from config import \
+    DISCOVER_ACTION, \
+    UPDATE_ACTION, \
+    GROUP_SITE_TYPE, \
+    PAGE_SITE_TYPE, \
+    DISCOVER_TIMEOUT, \
+    UPDATE_TIMEOUT, \
+    DEFAULT_IS_LOGINED, \
+    DEFAULT_IS_HEADLESS, \
+    DEFAULT_MAX_AMOUNT_OF_ITEMS, \
+    DEFAULT_N_AMOUNT_IN_A_CHUNK, \
+    ITEM_PROCESS_COUNTDOWN_DESCRIPTION, \
+    TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
+    DEFAULT_BREAK_BETWEEN_PROCESS
 class Handler:
-    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk):
+    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process):
         self.action = action
         self.site_type = site_type
         self.is_logined = is_logined
@@ -25,6 +39,7 @@ class Handler:
         self.is_headless = is_headless
         self.max_amount_of_items = max_amount_of_items
         self.n_amount_in_a_chunk = n_amount_in_a_chunk
+        self.break_between_process = break_between_process
 
     def log_handler(self, logfile, description, parameters, result=None):
         timestamp = None
@@ -70,9 +85,6 @@ class Handler:
             sys.stderr = logfile
         logfile.write('[{}] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, self.action, self.site_type, item))
 
-        from facebook import Facebook
-        from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
         fb.start(self.is_logined)
         browser = fb.driver
@@ -111,7 +123,7 @@ class Handler:
         response['url'] = item['url']
         return response
 
-    def countdown(self, period, desc='Item Process Countdown'):
+    def countdown(self, period, desc=ITEM_PROCESS_COUNTDOWN_DESCRIPTION):
         with tqdm(desc=desc, total=period) as pbar:
             for i in range(period):
                 helper.wait(1)
@@ -119,47 +131,52 @@ class Handler:
 
     def handle(self):
         items = []
+        get_items_by_site_type = None
         if self.action == UPDATE_ACTION:
-            items = db_manager.get_articles_never_update(self.site_type)
+            get_items_by_site_type = db_manager.get_articles_never_update
         elif self.action == DISCOVER_ACTION:
-            items = db_manager.get_sites_need_to_crawl(self.site_type)
-
-        random.shuffle(items)
-        items = items[:self.max_amount_of_items]
-        item_tuples = helper.to_tuples(items)
-        item_chunks = helper.divide_chunks(item_tuples, self.n_amount_in_a_chunk)
+            get_items_by_site_type = db_manager.get_sites_need_to_crawl
+        
+        items = get_items_by_site_type(self.site_type, amount=self.max_amount_of_items)
+        items_len = len(items)
+        dummy_items = range(items_len)
+        dummy_item_chunks = helper.divide_chunks(dummy_items, self.n_amount_in_a_chunk)
 
         desc = '{} {}'.format(self.action, self.site_type)
-        with tqdm(desc=desc, total=len(items)) as pbar:
-            for n_item in item_chunks:
+        with tqdm(desc=desc, total=items_len) as pbar:
+            for _ in dummy_item_chunks:
+                n_realtime_item = get_items_by_site_type(self.site_type, amount=self.n_amount_in_a_chunk)
+                n_item_for_pool = helper.to_tuples(n_realtime_item)
+
                 n_item_result = None
                 
                 countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
                 countdown_process.start()
 
                 with multiprocessing.Pool(processes=self.n_amount_in_a_chunk) as pool:
-                    pool_result = pool.starmap_async(self.process_item, n_item)
+                    pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
                     try:
                         n_item_result = pool_result.get(timeout=self.timeout)
                         print(n_item_result)
                     except Exception as e:
                         helper.print_error(e)
+                        raise
                 try:
                     countdown_process.terminate()
                 except Exception as e:
                     helper.print_error(e)
                 
-                # facebook block the user for a while, so take a break
-                try:
-                    for a_item_result in n_item_result:
-                        if a_item_result['is_security_check']:
-                            msg = '[{}] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
-                            print(msg)
-                            return
-                except Exception as e:
-                    helper.print_error(e)            
+                # check if facebook block
+                for a_item_result in n_item_result:
+                    if a_item_result['is_security_check']:
+                        msg = '[{}] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
+                        print(msg)
+                        return
 
                 pbar.update(self.n_amount_in_a_chunk)
+
+                break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS) if not self.break_between_process else self.break_between_process
+                self.countdown(break_time, desc=TAKE_A_BREAK_COUNTDOWN_DESCRIPTION)
 
 def main():
     argument_parser = argparse.ArgumentParser()
@@ -172,6 +189,8 @@ def main():
     argument_parser.add_argument('-nh', '--non-headless', action='store_true', help='browser in non-headless mode, default is headless')
     argument_parser.add_argument('-m', '--max', action='store', help='max amount of sites(by discover) or articles(by update) want to be accomplished, default is 2')
     argument_parser.add_argument('-c', '--cpu', action='store', help='how many cpu processes run at the same time, default is 2')
+    argument_parser.add_argument('-b', '--between', action='store', help='time break before continueing next site discover or article update')
+    argument_parser.add_argument('-n', '--note', action='store', help='additional note to be viewed on CLI')
     args = argument_parser.parse_args()
 
     action = None
@@ -181,6 +200,7 @@ def main():
     is_headless = DEFAULT_IS_HEADLESS
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
     n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK
+    break_between_process = None
 
     if args.discover:
         action = DISCOVER_ACTION
@@ -223,9 +243,16 @@ def main():
             n_amount_in_a_chunk = int(args.cpu)
         except Exception as e:
             helper.print_error(e)
-            raise        
+            raise 
 
-    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk)
+    if args.between:
+        try:
+            break_between_process = int(args.between)
+        except Exception as e:
+            helper.print_error(e)
+            raise
+
+    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process)
     main_handler.handle()
     
 

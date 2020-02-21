@@ -53,12 +53,16 @@ def get_single_value_of_records_from_table(table, column, where):
 def get_records(textual_sql):
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
-    return [dict(x) for x in exe.fetchall()]
+    result = [dict(x) for x in exe.fetchall()]
+    connection.connection.commit()
+    return result
 
 def get_record(textual_sql):
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
-    return dict(exe.fetchone())
+    result = dict(exe.fetchone())
+    connection.connection.commit()
+    return result
 
 def execute_sql(textual_sql):
     stmt = text(textual_sql)
@@ -78,7 +82,7 @@ def get_site_list(site_type):
     site_table = tables["Site"]
     query = db.select([site_table.c.site_id, site_table.c.name, site_table.c.url]).where(
         db.and_(
-            # site_table.c.is_active == 1,
+            site_table.c.is_active == 1,
             site_table.c.type == site_type,
         )        
     )

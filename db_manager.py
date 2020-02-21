@@ -9,12 +9,16 @@ def get_rows_by_table(table, where):
         helper.print_error(e)
         return None 
 
-def get_articles_never_update(site_type, site_id=None):
+def get_articles_never_update(site_type, site_id=None, amount=None):
     sql_text = None
     if site_id is not None:
         sql_text = 'select * from Article where snapshot_count=0 and article_type="FBPost" and site_id={}'.format(site_id)
     else:
         sql_text = 'select * from Article where snapshot_count=0 and article_type="FBPost"'
+
+    if amount is not None:
+        sql_text = '{} limit {}'.format(sql_text, amount)
+
     return db.get_records(sql_text)
 
 def get_articles_need_to_update(site_id=None):
@@ -64,8 +68,15 @@ def get_articles_by_site_id(site_id):
     where = 'site_id={}'.format(site_id)
     return db.get_single_value_of_records_from_table('Article', 'url', where)
 
-def get_sites_need_to_crawl(site_type='fb_page'):
-    return db.get_site_list(site_type)
+def get_sites_need_to_crawl(site_type='fb_page', amount=None):
+    sql_text = None
+    sql_text = 'select * from Site where is_active=1 and type="{}"'.format(site_type)
+
+    if amount is not None:
+        sql_text = '{} limit {}'.format(sql_text, amount)
+
+    return db.get_records(sql_text)
+    # return db.get_site_list(site_type)
     # return db.get_sites_need_to_crawl()
 
 def insert_article(article_obj):
