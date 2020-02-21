@@ -2,6 +2,43 @@ import db
 from helper import helper
 from config import PAGE_SITE_TYPE, GROUP_SITE_TYPE
 
+def get_sites_need_to_discover(site_type=None, site_id=None, amount=None):
+    where_text = 'is_active=1'
+
+    if site_id is not None:
+        where_text = '{} and site_id={}'.format(where_text, site_id)
+    else:
+        if site_type is not None:
+            where_text = '{} and type="{}"'.format(where_text, site_type)
+
+    sql_text = 'select * from Site where {}'.format(where_text)
+
+    if amount is not None:
+        sql_text = '{} limit {}'.format(sql_text, amount)
+
+    return db.get_records(sql_text)
+
+def get_articles_need_to_update(site_type=None, site_id=None, amount=None):
+    from_text = 'Article'
+    
+    now = helper.now()
+    where_text = 'Article.next_snapshot_at <= {} and Article.article_type="FBPost"'.format(now)
+    
+    if site_id is not None:
+        where_text = '{} and Article.site_id={}'.format(where_text, site_id)
+    else:
+        if site_type is not None:
+            from_text = '{}, Site'.format(from_text)
+            where_text = '{} and Site.type="{}" and Article.site_id=Site.site_id'.format(where_text, site_type)
+
+    order_text = 'Article.next_snapshot_at ASC'
+    sql_text = 'select Article.* from {} where {} ORDER BY {}'.format(from_text, where_text, order_text)
+
+    if amount is not None:
+        sql_text = '{} limit {}'.format(sql_text, amount)
+
+    return db.get_records(sql_text)    
+
 def get_rows_by_table(table, where):
     try:
         return db.get_table_rows(table, where)
@@ -21,14 +58,14 @@ def get_articles_never_update(site_type, site_id=None, amount=None):
 
     return db.get_records(sql_text)
 
-def get_articles_need_to_update(site_id=None):
-    sql_text = None
-    now = helper.now()
-    if site_id is not None:
-        sql_text = 'select * from Article where next_snapshot_at <= {} and article_type="FBPost" and site_id={}'.format(now, site_id)
-    else:
-        sql_text = 'select * from Article where next_snapshot_at <= {} and article_type="FBPost"'.format(now)
-    return db.get_records(sql_text)
+# def get_articles_need_to_update(site_id=None):
+#     sql_text = None
+#     now = helper.now()
+#     if site_id is not None:
+#         sql_text = 'select * from Article where next_snapshot_at <= {} and article_type="FBPost" and site_id={}'.format(now, site_id)
+#     else:
+#         sql_text = 'select * from Article where next_snapshot_at <= {} and article_type="FBPost"'.format(now)
+#     return db.get_records(sql_text)
 
 def get_article_by_id(id):
     sql_text = 'select * from Article where article_id={}'.format(id)
@@ -140,7 +177,12 @@ def update_article(article_obj):
 
 def main():
     # a_list = get_articles_need_to_update(94)
-    sites = get_sites_need_to_crawl_by_ids([69, 70, 71, 72, 73, 74, 75, 76])
-    print('hold')
+    # sites = get_sites_need_to_crawl_by_ids([69, 70, 71, 72, 73, 74, 75, 76])
+    # print('hold'
+    # result = get_articles_need_to_update(site_id=23)
+    # result = get_articles_need_to_update(site_id=118, site_type='fb_page', amount=5)
+    # result = get_articles_need_to_update(site_type='fb_public_group')
+    result = get_sites_need_to_discover(site_id=118)
+    print()
 if __name__ == "__main__":
     main()

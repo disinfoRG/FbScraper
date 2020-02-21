@@ -31,7 +31,7 @@ from config import \
     TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
     DEFAULT_BREAK_BETWEEN_PROCESS
 class Handler:
-    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process):
+    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id):
         self.action = action
         self.site_type = site_type
         self.is_logined = is_logined
@@ -40,6 +40,7 @@ class Handler:
         self.max_amount_of_items = max_amount_of_items
         self.n_amount_in_a_chunk = n_amount_in_a_chunk
         self.break_between_process = break_between_process
+        self.specific_site_id = specific_site_id
 
     def log_handler(self, logfile, description, parameters, result=None):
         timestamp = None
@@ -131,13 +132,13 @@ class Handler:
 
     def handle(self):
         items = []
-        get_items_by_site_type = None
+        get_items = None
         if self.action == UPDATE_ACTION:
-            get_items_by_site_type = db_manager.get_articles_never_update
+            get_items = db_manager.get_articles_need_to_update
         elif self.action == DISCOVER_ACTION:
-            get_items_by_site_type = db_manager.get_sites_need_to_crawl
+            get_items = db_manager.get_sites_need_to_discover
         
-        items = get_items_by_site_type(self.site_type, amount=self.max_amount_of_items)
+        items = get_items(site_type=self.site_type, site_id=self.specific_site_id,amount=self.max_amount_of_items)
         items_len = len(items)
         dummy_items = range(items_len)
         dummy_item_chunks = helper.divide_chunks(dummy_items, self.n_amount_in_a_chunk)
@@ -145,7 +146,7 @@ class Handler:
         desc = '{} {}'.format(self.action, self.site_type)
         with tqdm(desc=desc, total=items_len) as pbar:
             for _ in dummy_item_chunks:
-                n_realtime_item = get_items_by_site_type(self.site_type, amount=self.n_amount_in_a_chunk)
+                n_realtime_item = get_items(site_type=self.site_type, site_id=self.specific_site_id, amount=self.n_amount_in_a_chunk)
                 n_item_for_pool = helper.to_tuples(n_realtime_item)
 
                 n_item_result = None
@@ -191,6 +192,7 @@ def main():
     argument_parser.add_argument('-c', '--cpu', action='store', help='how many cpu processes run at the same time, default is 2')
     argument_parser.add_argument('-b', '--between', action='store', help='time break before continueing next site discover or article update')
     argument_parser.add_argument('-n', '--note', action='store', help='additional note to be viewed on CLI')
+    argument_parser.add_argument('-s', '--site', action='store', help='discover and update sites or articles from specific site id')
     args = argument_parser.parse_args()
 
     action = None
@@ -201,6 +203,7 @@ def main():
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
     n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK
     break_between_process = None
+    specific_site_id = None
 
     if args.discover:
         action = DISCOVER_ACTION
@@ -252,7 +255,14 @@ def main():
             helper.print_error(e)
             raise
 
-    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process)
+    if args.site:
+        try:
+            specific_site_id = int(args.site)
+        except Exception as e:
+            helper.print_error(e)
+            raise        
+
+    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id)
     main_handler.handle()
     
 

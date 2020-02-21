@@ -18,6 +18,9 @@ def connect_to_db():
 
 engine, connection, tables = connect_to_db()
 
+def flush():
+    connection.connection.commit()
+
 def get_table_rows(table_name, where=None):
     table = tables[table_name] 
     query = table.select()
@@ -26,6 +29,7 @@ def get_table_rows(table_name, where=None):
         query = query.where(whereclause)
     
     items = [dict(x) for x in connection.execute(query).fetchall()]
+    flush()
 
     return items    
 
@@ -38,6 +42,7 @@ def is_record_existed(table,column,value):
     stmt = text(textual_sql)
     exec = connection.execute(stmt)
     count = exec.scalar()
+    flush()
     
     if count > 0:
         return True
@@ -48,25 +53,28 @@ def get_single_value_of_records_from_table(table, column, where):
     textual_sql = '{} where {}'.format(query, where)
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
-    return [dict(x)[column] for x in exe.fetchall()]
+    result = [dict(x)[column] for x in exe.fetchall()]
+    flush()
+    return result
 
 def get_records(textual_sql):
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
     result = [dict(x) for x in exe.fetchall()]
-    connection.connection.commit()
+    flush()
     return result
 
 def get_record(textual_sql):
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
     result = dict(exe.fetchone())
-    connection.connection.commit()
+    flush()
     return result
 
 def execute_sql(textual_sql):
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
+    flush()
 
 def get_sites_need_to_crawl():
     where_next_snapshot_at = 'JSON_EXTRACT(site_info, "$.next_snapshot_at") <= {}'.format(helper.now())
@@ -75,7 +83,10 @@ def get_sites_need_to_crawl():
     textual_sql = '{} where {} or {}'.format(query, where_next_snapshot_at, where_first_snapshot_at)
     stmt = text(textual_sql)
     exe = connection.execute(stmt)
-    return [dict(x) for x in exe.fetchall()]
+    result = [dict(x) for x in exe.fetchall()]
+    flush()
+
+    return result
 
 def get_site_list(site_type):
     # select * from Site where is_active=1 and type='fb_page';
@@ -87,6 +98,7 @@ def get_site_list(site_type):
         )        
     )
     site_infos = [dict(x) for x in connection.execute(query).fetchall()]
+    flush()
 
     return site_infos
 
@@ -100,6 +112,8 @@ def update_page(item):
         'site_info': site_info,
     }
     exe = connection.execute(query, values)
+    flush()
+
     return site_id    
 
 def get_safe_value(v):
@@ -116,7 +130,9 @@ def insert_record(record, table):
     #     safe_record[k] = get_safe_value(v)
 
     exe = connection.execute(query, record)
-    return exe.inserted_primary_key
+    result = exe.inserted_primary_key
+    flush()
+    return result
 
 def insert_article(item, article_type):
     query = db.insert(tables['Article'])
@@ -139,11 +155,13 @@ def insert_fb_post_snapshot(merged_item):
     query = db.insert(tables['FBPostSnapshot'])
     snapshot = db_helper.get_fb_snapshot(merged_item, 'post')
     exe = connection.execute(query, snapshot)
+    flush()
  
 def insert_fb_comment_snapshot(merged_item):
     query = db.insert(tables['FBCommentSnapshot'])
     snapshot = db_helper.get_fb_snapshot(merged_item, 'comment')
     exe = connection.execute(query, snapshot)
+    flush()
 
 def main():
     table = 'Article'
