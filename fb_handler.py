@@ -177,8 +177,8 @@ class Handler:
                         is_failed = True
                         msg = '[{}][handle] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
                         print(msg)
+                        
                     if len(a_item_result['errors']) > 0:
-                        is_failed = True
                         msg = '[{}][handle] Encountered errors in details: {}. \n'.format(helper.now(), a_item_result)
                         print(msg)
 
