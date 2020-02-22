@@ -29,9 +29,10 @@ from config import \
     DEFAULT_N_AMOUNT_IN_A_CHUNK, \
     ITEM_PROCESS_COUNTDOWN_DESCRIPTION, \
     TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
-    DEFAULT_BREAK_BETWEEN_PROCESS
+    DEFAULT_BREAK_BETWEEN_PROCESS, \
+    DEFAULT_MAX_AUTO_TIMES
 class Handler:
-    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id):
+    def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id, max_auto_times):
         self.action = action
         self.site_type = site_type
         self.is_logined = is_logined
@@ -41,6 +42,7 @@ class Handler:
         self.n_amount_in_a_chunk = n_amount_in_a_chunk
         self.break_between_process = break_between_process
         self.specific_site_id = specific_site_id
+        self.max_auto_times = max_auto_times
 
     def log_handler(self, logfile, description, parameters, result=None):
         timestamp = None
@@ -84,7 +86,7 @@ class Handler:
         sys.stdout = logfile
         if not should_show_progress:
             sys.stderr = logfile
-        logfile.write('[{}] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, self.action, self.site_type, item))
+        logfile.write('[{}][process_item] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, self.action, self.site_type, item))
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
         fb.start(self.is_logined)
@@ -97,25 +99,25 @@ class Handler:
         except SelfDefinedError as e:
             # encountered security check for robot or login
             is_security_check = True
-            error_msg = '[{}] Encountered security check and failed to {}-{} for item, error: {} \n'.format(helper.now(), self.action, self.site_type, helper.print_error(e, error_note))
+            error_msg = '[{}][process_item] Encountered security check and failed to {}-{} for item, error: {} \n'.format(helper.now(), self.action, self.site_type, helper.print_error(e, error_note))
             errors.append(error_msg)
             logfile.write(error_msg)
         except Exception as e:
-            error_msg = '[{}] Failed to {}-{} for item, error: {} \n'.format(helper.now(), self.action, self.site_type, helper.print_error(e, error_note))
+            error_msg = '[{}][process_item] Failed to {}-{} for item, error: {} \n'.format(helper.now(), self.action, self.site_type, helper.print_error(e, error_note))
             errors.append(error_msg)
             logfile.write(error_msg)
         
         try:
             browser.quit()
-            logfile.write('[{}] Quit Browser, result is SUCCESS \n'.format(helper.now()))
+            logfile.write('[{}][process_item] Quit Browser, result is SUCCESS \n'.format(helper.now()))
         except Exception as e:
-            error_msg = '[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e, browser.current_url))
+            error_msg = '[{}][process_item] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e, browser.current_url))
             errors.append(error_msg)
             logfile.write(error_msg)
 
         end_at = helper.now()
         spent = end_at - start_at
-        logfile.write('[{}] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, spent, self.action, self.site_type, item))
+        logfile.write('[{}][process_item] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, spent, self.action, self.site_type, item))
         logfile.close()
         
         response = {}
@@ -169,10 +171,23 @@ class Handler:
                 
                 # check if facebook block
                 for a_item_result in n_item_result:
+                    is_failed = False
+
                     if a_item_result['is_security_check']:
-                        msg = '[{}] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
+                        is_failed = True
+                        msg = '[{}][handle] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
                         print(msg)
-                        return
+                    if len(a_item_result['errors']) > 0:
+                        is_failed = True
+                        msg = '[{}][handle] Encountered errors in details: {}. \n'.format(helper.now(), a_item_result)
+                        print(msg)
+
+                    if is_failed:
+                        if self.max_auto_times > 0:
+                            self.max_auto_times -= 1
+                            self.is_logined = not self.is_logined                            
+                        else:
+                            return
 
                 pbar.update(self.n_amount_in_a_chunk)
 
@@ -193,6 +208,7 @@ def main():
     argument_parser.add_argument('-b', '--between', action='store', help='time break before continueing next site discover or article update')
     argument_parser.add_argument('-n', '--note', action='store', help='additional note to be viewed on CLI')
     argument_parser.add_argument('-s', '--site', action='store', help='discover and update sites or articles from specific site id')
+    argument_parser.add_argument('-a', '--auto', action='store', help='max times of automatically switch between login and without-login for any error, default auto-switch max times is 0')
     args = argument_parser.parse_args()
 
     action = None
@@ -204,6 +220,7 @@ def main():
     n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK
     break_between_process = None
     specific_site_id = None
+    max_auto_times = DEFAULT_MAX_AUTO_TIMES
 
     if args.discover:
         action = DISCOVER_ACTION
@@ -260,9 +277,16 @@ def main():
             specific_site_id = int(args.site)
         except Exception as e:
             helper.print_error(e)
-            raise        
+            raise
 
-    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id)
+    if args.auto:
+        try:
+            max_auto_times = int(args.auto)
+        except Exception as e:
+            helper.print_error(e)
+            raise
+
+    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id, max_auto_times=max_auto_times)
     main_handler.handle()
     
 
