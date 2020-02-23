@@ -157,37 +157,45 @@ class Handler:
                 countdown_process.start()
 
                 with multiprocessing.Pool(processes=self.n_amount_in_a_chunk) as pool:
+                    note = 'n_item_for_pool={}, self={}'.format(n_item_for_pool, self)
                     pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
                     try:
                         n_item_result = pool_result.get(timeout=self.timeout)
                         print(n_item_result)
+                    except multiprocessing.context.TimeoutError as e:
+                        helper.print_error(e, note)
                     except Exception as e:
-                        helper.print_error(e)
+                        helper.print_error(e, note)
                         raise
+                        
                 try:
                     countdown_process.terminate()
                 except Exception as e:
                     helper.print_error(e)
                 
-                # check if facebook block
-                for a_item_result in n_item_result:
-                    is_failed = False
+                try:
+                    # check if facebook block
+                    for a_item_result in n_item_result:
+                        is_failed = False
 
-                    if a_item_result['is_security_check']:
-                        is_failed = True
-                        msg = '[{}][handle] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
-                        print(msg)
-                        
-                    if len(a_item_result['errors']) > 0:
-                        msg = '[{}][handle] Encountered errors in details: {}. \n'.format(helper.now(), a_item_result)
-                        print(msg)
+                        if a_item_result['is_security_check']:
+                            is_failed = True
+                            msg = '[{}][handle] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
+                            print(msg)
 
-                    if is_failed:
-                        if self.max_auto_times > 0:
-                            self.max_auto_times -= 1
-                            self.is_logined = not self.is_logined                            
-                        else:
-                            return
+                        if len(a_item_result['errors']) > 0:
+                            msg = '[{}][handle] Encountered errors in details: {}. \n'.format(helper.now(), a_item_result)
+                            print(msg)
+
+                        if is_failed:
+                            if self.max_auto_times > 0:
+                                self.max_auto_times -= 1
+                                self.is_logined = not self.is_logined                            
+                            else:
+                                return
+                # for multiprocessing.context.TimeoutError cause 'NoneType' object is not iterable
+                except TypeError as e:
+                    pass
 
                 pbar.update(self.n_amount_in_a_chunk)
 

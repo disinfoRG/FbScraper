@@ -1,10 +1,10 @@
 from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
-from config import DEFAULT_IS_LOGINED
+from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
 
 class PostCrawler:
-    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=720):
+    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.post_node = None
@@ -22,23 +22,37 @@ class PostCrawler:
         self.logfile.write(timestamp)        
 
     def crawl(self):
-        self.start_at = helper.now()
-        self.logfile.write('\n')
-        self.enter_site()
-        is_located = self.locate_target_post()
+        try:
+            self.start_at = helper.now()
+            self.logfile.write('\n')
+            self.enter_site()
+            is_located = self.locate_target_post()
 
-        if is_located:
-            self.expand_comment()
-            raw_html = self.get_raw_html()
-            self.write_to_db and self.write_to_db(raw_html)
-        else:
-            raise NoSuchElementException
+            if is_located:
+                self.expand_comment()
+            else:
+                selector = '.permalinkPost' if self.is_logined else '.userContentWrapper'
+                raise NoSuchElementException('[post_crawler] Cannot locate target post with selector={}'.format(selector))
+
+            self.save()
+        except Exception as e:
+            self.save()
+            note = 'url={}, is_logined={}'.format(self.url, self.is_logined)
+            helper.print_error(e, note)
+            raise
+
+    def save(self):
+        raw_html = self.get_raw_html()
+        self.write_to_db and self.write_to_db(raw_html)
 
     def get_raw_html(self):
-        # return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
         # to get the "current" post node 
         self.locate_target_post()
-        return helper.get_html(self.post_node)
+
+        if self.post_node is not None:
+            return helper.get_html(self.post_node)
+        else:
+            return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
 
     def enter_site(self):
         post_root_url = self.url
@@ -149,22 +163,6 @@ class PostCrawler:
             self.logfile.write('crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(helper.now(), filter_menu_selector))
             helper.click_with_move(unfiltered_option_selector, self.browser)
             self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(helper.now(), unfiltered_option_selector))
-
-            # selector = '[data-testid="UFI2ViewOptionsSelector/root"]'
-            # c_filter_button = self.post_node.find_element_by_css_selector(selector)
-
-            # helper.click_with_move(c_filter_button, self.browser, should_offset=True)
-            # self.logfile.write('crawler_timestamp_{}: clicked comment filter button \n'.format(helper.now()))
-            # helper.wait()
-
-            # c_filter_menu = helper.get_element(self.browser, '[data-testid="UFI2ViewOptionsSelector/menuRoot"]')
-            # self.logfile.write('crawler_timestamp_{}: comment filter menu is shown \n'.format(helper.now()))
-            # helper.wait()
-
-            # c_no_filter = helper.get_element(c_filter_menu, '[data-ordering="RANKED_UNFILTERED"]')
-            # helper.click_with_move(c_no_filter, self.browser, should_offset=True)
-            # self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" \n'.format(helper.now()))
-            # helper.wait()
         except Exception as e:
             selector = '{} and {}'.format(filter_menu_link_selector, unfiltered_option_selector)
             failed_status = 'crawler_timestamp_{}: failed to turn off comment filter with selector "{}", error is {} \n'.format(helper.now(), selector, helper.print_error(e))
@@ -217,18 +215,22 @@ def test_robot_check(url):
 
 def main():
     # 12min = 12*60 = 720sec
-    # article_url = 'https://www.facebook.com/almondbrother/posts/3070894019610988'
-    # article_url = 'https://www.facebook.com/travelmoviemusic/posts/2780616305352791'
-    # article_url = 'https://www.facebook.com/twherohan/posts/2689813484589132'
-    # article_url = 'https://www.facebook.com/almondbrother/posts/725869957939281'
-    # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675'
-    article_url = 'https://www.facebook.com/eatnews/posts/488393351879106'
-    # article_url = 'https://www.facebook.com/lovebakinglovehealthy/posts/1970662936284274'
+    # article_url = 'https://www.facebook.com/travelmoviemusic/posts/2780616305352791' # 2 comments
+    # article_url = 'https://www.facebook.com/twherohan/posts/2689813484589132' # thousands comments
+    # article_url = 'https://www.facebook.com/almondbrother/posts/725869957939281' # video
+    # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675' # hundreds comments
+    # article_url = 'https://www.facebook.com/eatnews/posts/488393351879106' # thounds shares
+    # article_url = 'https://www.facebook.com/lovebakinglovehealthy/posts/1970662936284274' # no comments
+    article_url = 'https://www.facebook.com/fuqidao168/posts/2466415456951685' # non-existing article
+    # article_url = 'https://www.facebook.com/twherohan/posts/2461318357438647' # ten-thousands comments
+    
+    start_time = helper.now()
+    print('[{}][main] Start'.format(start_time))
 
     from facebook import Facebook
     from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 
-    fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, False)
+    fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, True)
     fb.start(False)
     browser = fb.driver
 
@@ -236,9 +238,14 @@ def main():
     fpath = 'test_post_crawler_{}.log'.format(helper.now())
     logfile = Logger(open(fpath, 'a', buffering=1))
 
-    pc = PostCrawler(article_url, browser, print, logfile)
-    pc.crawl()
+    with open('cannot-locate-post-node_NoSuchElementException.html', 'w') as html_file:
+        pc = PostCrawler(article_url, browser, html_file.write, logfile)
+        pc.crawl()
+
     browser.quit()
+
+    end_time = helper.now()
+    print('[{}][main] End, spent: {}'.format(end_time, end_time - start_time))
     
 if __name__ == '__main__':
     main()
