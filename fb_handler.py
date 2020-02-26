@@ -1,21 +1,18 @@
 from tqdm import tqdm
 import argparse
+import time
 import os
 import sys
+import pugsql
 import multiprocessing
 multiprocessing.set_start_method('spawn', True)
-from selenium.common.exceptions import NoSuchElementException
-import threading
-import random
 
 # self-defined
 from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from post_spider import PostSpider
 from page_spider import PageSpider
-from logger import Logger
 from helper import helper, SelfDefinedError
-import db_manager
 from config import \
     DISCOVER_ACTION, \
     UPDATE_ACTION, \
@@ -31,6 +28,12 @@ from config import \
     TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
     DEFAULT_MAX_AUTO_TIMES
+
+
+queries = pugsql.module('queries')
+queries.connect(os.getenv('DB_URL'))
+
+
 class Handler:
     def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id, max_auto_times):
         self.action = action
@@ -61,7 +64,7 @@ class Handler:
     def discover_one(self, site, browser, logfile, is_group_site_type, max_try_times=None):
         site_url = site['url']
         site_id = site['site_id']
-        existing_article_urls = db_manager.get_articles_by_site_id(site_id)
+        existing_article_urls = [x['url'] for x in queries.get_article_urls_of_site(site_id=site_id)]
         should_use_original_url = is_group_site_type
         ps = PageSpider(site_url, site_id, browser, existing_article_urls, logfile, max_try_times, should_use_original_url)
         ps.work()
@@ -133,27 +136,31 @@ class Handler:
                 pbar.update(1)
 
     def handle(self):
-        items = []
-        get_items = None
         if self.action == UPDATE_ACTION:
-            get_items = db_manager.get_articles_need_to_update
+            items = queries.get_articles_need_to_update(site_id=self.specific_site_id,
+                                                        now=int(time.time()),
+                                                        amount=self.max_amount_of_items)
         elif self.action == DISCOVER_ACTION:
-            get_items = db_manager.get_sites_need_to_discover
-        
-        items = get_items(site_type=self.site_type, site_id=self.specific_site_id,amount=self.max_amount_of_items)
+            items = queries.get_sites_need_to_discover(site_type=self.site_type,
+                                                       site_id=self.specific_site_id,
+                                                       amount=self.max_amount_of_items)
+        else:
+            raise Exception('Please specified valid action')
+
+        items = list(items)  # turn generator object into list of dict
         items_len = len(items)
         dummy_items = range(items_len)
         dummy_item_chunks = helper.divide_chunks(dummy_items, self.n_amount_in_a_chunk)
 
         desc = '{} {}'.format(self.action, self.site_type)
         with tqdm(desc=desc, total=items_len) as pbar:
-            for _ in dummy_item_chunks:
-                n_realtime_item = get_items(site_type=self.site_type, site_id=self.specific_site_id, amount=self.n_amount_in_a_chunk)
+            for c in dummy_item_chunks:
+                n_realtime_item = items[c*self.n_amount_in_a_chunk:(c+1)*self.n_amount_in_a_chunk]
                 n_item_for_pool = helper.to_tuples(n_realtime_item)
 
                 n_item_result = None
                 
-                countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
+                countdown_process = multiprocessing.Process(target=self.countdown, args=(self.timeout,))
                 countdown_process.start()
 
                 with multiprocessing.Pool(processes=self.n_amount_in_a_chunk) as pool:
