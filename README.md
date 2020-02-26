@@ -26,7 +26,7 @@ Then update your site table.  You need an API key from Airtable generated [here]
 ```sh
 $ cd NewsScraping && pipenv install
 $ pipenv run alembic upgrade head
-$ SCRAPY_PROJECT=sitesAirtable pipenv run scrapy crawl updateSites
+$ pipenv run scrapy crawl updateSites
 ```
 5. crawl new post urls for all sites
 ```sh
