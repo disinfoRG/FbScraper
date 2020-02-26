@@ -95,7 +95,7 @@ fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', True, CHROMEDRIVER_BIN)
 - config.py
     - configure how to run browser (aka. facebook.py)
         - Chrome or Firefox
-        - Browser's executalbe binary
+        - Browser's executable binary
         - Headless or not
         - Email and password to login
 - settings.py

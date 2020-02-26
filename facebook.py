@@ -6,32 +6,37 @@ from selenium.common.exceptions import WebDriverException, NoSuchWindowException
 from urllib3.exceptions import MaxRetryError
 
 # self-defined
-import helper
+from helper import helper
 
 class Facebook:
-    def __init__(self, email, password, browser_type, executable_path, is_headless=True, should_reuse_session=True):        
+    def __init__(self, email, password, browser_type, executable_path, is_headless=True, reuse_session_id=None):
         self.email = email
         self.password = password
         self.browser_type = browser_type
         self.executable_path = executable_path
         self.is_headless = is_headless
-        self.should_reuse_session = should_reuse_session
+        self.reuse_session_id = reuse_session_id
         self.cookie_path = './{}_cookie.json'.format(email)
-        self.session_path = './{}_session.json'.format(browser_type)
+        self.session_path = None if not reuse_session_id else './{}_{}_working_session.json'.format(email, reuse_session_id)
         self.entrance_url = 'https://www.facebook.com'
         self.tmp_url = 'https://www.google.com'
         self.driver = None
-        self.session_status = self.configure_session()
-        
-    def start(self):
-        if self.session_status == 'attached_session':
-            return
+        self.session_status = None
 
-        if self.is_login_success():
-            return
+    def start(self, should_login=True):
+        if should_login:
+            self.session_status = self.configure_session()
 
-        # sign in only if it is a new browser and not loggedin
-        self.login()
+            if self.session_status == 'attached_session':
+                return
+
+            if self.is_login_success():
+                return
+
+            # sign in only if it is a new browser and not loggedin
+            self.login()
+        else:
+            self.configure_session(False)
 
     def login(self):
         if self.has_cookie():
@@ -44,14 +49,18 @@ class Facebook:
 
     def has_cookie(self):
         return os.path.exists(self.cookie_path)
+
     def has_session(self):
-        return os.path.exists(self.session_path)
+        try:
+            return os.path.exists(self.session_path)
+        except:
+            return False
 
     def is_login_success(self, timeout=20):
         logined_selector = '#sideNav'
 
         try:
-            helper.wait_element(logined_selector, self.driver)
+            helper.wait_element_by_selector(logined_selector, self.driver)
             print(' -----  login success')
             return True
         except:
@@ -100,15 +109,15 @@ class Facebook:
             return
         self.driver.get(url)
 
-    def configure_session(self):
-        return self.configure_browser(self.browser_type, self.is_headless, self.executable_path, self.should_reuse_session)
+    def configure_session(self, should_use_remote_webdriver=True):
+        return self.configure_browser(self.browser_type, self.is_headless, self.executable_path, self.reuse_session_id, should_use_remote_webdriver)
 
-    def configure_browser(self, browser_type, is_headless, executable_path, should_reuse_session, tried_count=0):
+    def configure_browser(self, browser_type, is_headless, executable_path, reuse_session_id, should_use_remote_webdriver, tried_count=0):
         if tried_count > 2:
             raise Exception('Failed to configure browser (can be due to Network Error)')
 
         try:
-            session = self.set_session(browser_type, is_headless, executable_path, should_reuse_session)
+            session = self.set_session(browser_type, is_headless, executable_path, reuse_session_id, should_use_remote_webdriver)
 
             # verify if the session work by checking if window with url exists or by connecting to a random site
             if self.driver.current_url is not None:
@@ -137,11 +146,11 @@ class Facebook:
             os.remove(self.session_path)
         
         tried_count += 1
-        return self.configure_browser(browser_type, is_headless, executable_path, should_reuse_session, tried_count)
+        return self.configure_browser(browser_type, is_headless, executable_path, reuse_session_id, should_use_remote_webdriver, tried_count)
 
     def add_common_options(self, options):
-        options.add_argument("start-maximized"); # open Browser in maximized mode
-        options.add_argument("disable-infobars"); # disabling infobars
+        options.add_argument("--start-maximized"); # open Browser in maximized mode
+        # options.add_argument("--disable-infobars"); # disabling infobars
         options.add_argument("--disable-extensions"); # disabling extensions
     def add_headless_options(self, options):
         options.headless = True
@@ -149,17 +158,18 @@ class Facebook:
         options.add_argument("--disable-dev-shm-usage"); # overcome limited resource problems
         options.add_argument("--no-sandbox"); # Bypass OS security model
 
-    def set_session(self, browser_type, is_headless, executable_path, should_reuse_session):
-        if should_reuse_session is True:
-            try:
-                self.attach_to_session()
-                return 'attached_session'
-            except TypeError:
-                # previous session not found
-                pass
-            except Exception as e:
-                helper.print_error(e)
-                pass
+    def set_session(self, browser_type, is_headless, executable_path, reuse_session_id, should_use_remote_webdriver):
+        if should_use_remote_webdriver:
+            if reuse_session_id is not None:
+                try:
+                    self.attach_to_session()
+                    return 'attached_session'
+                except TypeError:
+                    # previous session not found
+                    pass
+                except Exception as e:
+                    helper.print_error(e)
+                    pass
 
         # the selection of browser
         if browser_type == "Chrome":
@@ -191,13 +201,14 @@ class Facebook:
             except AttributeError as e:
                 helper.print_error(e)
                 pass
+        
+        if should_use_remote_webdriver:
+            # save browser's info for reusage
+            executor_url = self.driver.command_executor._url
+            session_id = self.driver.session_id
+            self.save_session(executor_url, session_id)
 
-        # save browser's info for reusage
-        executor_url = self.driver.command_executor._url
-        session_id = self.driver.session_id
-        self.save_session(executor_url, session_id)
-
-        return 'new_session'
+            return 'new_session'
 
     def get_session(self):
         print( " -----  loading previous browser's session")
@@ -224,14 +235,17 @@ class Facebook:
             'session_id': session_id
         }
         json_session = json.dumps(session)
-        with open(self.session_path, "w") as f:
+        fpath = './{}_session_{}.json'.format(self.email, self.reuse_session_id)
+        self.session_path = fpath
+        with open(fpath, "w") as f:
             f.write(json_session)
             print(" ----- current browser's session made")
 
     def attach_to_session(self):
         session = self.get_session()
         self.driver = self.create_driver_with_session(session)
-        
+    
+    @classmethod
     def create_driver_with_session(self, session):
         executor_url = session['executor_url']
         session_id = session['session_id']

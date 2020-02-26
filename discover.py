@@ -7,7 +7,7 @@ import sys
 from page_spider import PageSpider
 from logger import Logger
 import db_manager
-import helper
+from helper import helper
 
 def log_handler(logfile, description, site, result=None):
     timestamp = None
@@ -19,10 +19,10 @@ def log_handler(logfile, description, site, result=None):
 
     logfile.write(timestamp)
 
-def discover_all(browser, logfile):
+def discover_all(browser, logfile, site_ids):
     logfile.write('\n')
 
-    sites = db_manager.get_sites_need_to_crawl()
+    sites = db_manager.get_sites_need_to_crawl_by_ids(site_ids)
     total = len(sites)
 
     has_error = False
@@ -71,12 +71,24 @@ def test(browser, logfile, max_try_times):
     site['url'] = 'https://www.facebook.com/jesusSavesF13/'
     discover_one(site, browser, logfile, max_try_times)
 
+def discover_by_controller(browser, logfile, site):
+    log_handler(logfile, 'start crawling site', site)
 
-def main():
+    try:
+        discover_one(site, browser, logfile)
+        log_handler(logfile, 'complete crawling site', site, 'SUCCESS')
+    except Exception as e:
+        log_handler(logfile, 'failed crawling site', site, helper.print_error(e))
+
+def main(is_controller_mode=False, controller_site=None, controller_email=None, controller_password=None):
     pid = os.getpid()
     start_at = helper.now()
 
     fpath = 'discover_pid{}_timestamp{}.log'.format(pid, start_at)
+
+    if is_controller_mode:
+        fpath = '{}_siteid{}_{}'.format(controller_email, controller_site['site_id'], fpath)
+
     logfile = Logger(open(fpath, 'a', buffering=1))
 
     logfile.write('[{}] -------- LAUNCH --------, pid: {}\n'.format(start_at, pid))
@@ -85,32 +97,50 @@ def main():
     # sys.stdout = logfile
     # sys.stderr = logfile
 
-    from config import fb
-    fb.start()
-    browser = fb.driver
+    browser = None
+    has_error = False
+    if not is_controller_mode:
+        from config import fb
+        fb.start()
+        browser = fb.driver
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--all', action='store_true',
-                        help='discover new posts in all fb pages')
-    parser.add_argument('-c', '--complete', action='store_true',
-                        help='complete search in one site')
-    args = parser.parse_args()
-    if args.all:
-        discover_all(browser, logfile)
-    else:
-        if args.complete:
-            max_try_times = 1000
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-a', '--all', action='store_true',
+                            help='discover new posts in all fb pages')
+        parser.add_argument('-c', '--complete', action='store_true',
+                            help='complete search in one site')
+        args = parser.parse_args()
+        if args.all:
+            site_ids = [87, 89, 93, 95]
+            discover_all(browser, logfile, site_ids)
         else:
-            max_try_times = 3
-        test(browser, logfile, max_try_times)
+            if args.complete:
+                max_try_times = 1000
+            else:
+                max_try_times = 3
+            test(browser, logfile, max_try_times)
+    else:
+        log_handler(logfile, '<create a new facebook browser> start', controller_site)
+        
+        try:
+            from facebook import Facebook
+            from settings import CHROMEDRIVER_BIN
+            fb = Facebook(controller_email, controller_password, 'Chrome', CHROMEDRIVER_BIN, True)
+            fb.start()
+            browser = fb.driver
+            log_handler(logfile, '<create a new facebook browser> done', 'SUCCESS')
+        except Exception as e:
+            log_handler(logfile, '<create a new facebook browser> failed', helper.print_error(e))
+            has_error = True
+
+        if not has_error:
+            discover_by_controller(browser, logfile, controller_site)
 
     try:
         browser.quit()
         logfile.write('[{}] Quit Browser, result is SUCCESS \n'.format(helper.now()))
     except Exception as e:
         logfile.write('[{}] Failed to Quit Browser, {} \n'.format(helper.now(), helper.print_error(e)))
-
-
 
     end_at = helper.now()
     spent = end_at - start_at
