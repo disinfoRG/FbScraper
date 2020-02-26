@@ -19,6 +19,7 @@ python-dotenv = "*"
 tqdm = "*"
 alembic = "*"
 python-crontab = "*"
+scrapy = "*"
 
 [requires]
 python_version = "3.7"
