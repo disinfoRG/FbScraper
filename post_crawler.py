@@ -1,14 +1,17 @@
 from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
+import time
 from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
 
+
 class PostCrawler:
-    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
+    def __init__(self, url, article_id, browser, queries, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
         self.url = helper.get_clean_url(url)
+        self.article_id = article_id
         self.browser = browser
         self.post_node = None
-        self.write_to_db = write_to_db
+        self.queries = queries
         self.logfile = logfile
         self.max_try_times = max_try_times
         self.is_logined = is_logined
@@ -21,7 +24,7 @@ class PostCrawler:
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
         self.logfile.write(timestamp)        
 
-    def crawl(self):
+    def crawl_and_save(self):
         try:
             self.start_at = helper.now()
             self.logfile.write('\n')
@@ -34,16 +37,39 @@ class PostCrawler:
                 selector = '.permalinkPost' if self.is_logined else '.userContentWrapper'
                 raise NoSuchElementException('[post_crawler] Cannot locate target post with selector={}'.format(selector))
 
-            self.save()
+            raw_html = self.get_raw_html()
+            self.save_to_db(raw_html)
+            self.logfile.write(f'[INFO] Article {self.article_id} update successfully.')
+
         except Exception as e:
-            self.save()
             note = 'url={}, is_logined={}'.format(self.url, self.is_logined)
-            helper.print_error(e, note)
+            errMsg = helper.print_error(e, note)
+            self.logfile.write(f'[ERROR] updating article {self.article_id}: {errMsg}')
             raise
 
-    def save(self):
-        raw_html = self.get_raw_html()
-        self.write_to_db and self.write_to_db(raw_html)
+    def save_to_db(self, raw_html):
+        now = int(time.time())
+
+        # insert snapshot
+        snapshot = dict()
+        snapshot['snapshot_at'] = now
+        snapshot['raw_data'] = raw_html
+        snapshot['article_id'] = self.article_id
+        self.queries.insert_article_snapshot(snapshot)
+
+        # update article
+        article = dict()
+        original_article = self.queries.get_article_by_id(article_id=self.article_id)
+
+        article['article_id'] = self.article_id
+        article['last_snapshot_at'] = now
+        article['next_snapshot_at'] = now + 259200  # 3 days
+        article['snapshot_count'] += 1
+        if original_article['first_snapshot_at'] == 0:
+            article['first_snapshot_at'] = now
+        else:
+            article['first_snapshot_at'] = original_article['first_snapshot_at']
+        self.queries.update_article(article)
 
     def get_raw_html(self):
         # to get the "current" post node 
@@ -77,11 +103,6 @@ class PostCrawler:
             raise
 
         if not self.is_logined:
-            # window_block_selector = '#expanding_cta_close_button'
-            # try:        
-            #     helper.click_with_move(window_block_selector, self.browser)
-            # except Exception as e:
-            #     helper.print_error(e, window_block_selector)
             block_selector = '#headerArea'
             try:
                 helper.remove_element_by_selector(block_selector, self.browser)
