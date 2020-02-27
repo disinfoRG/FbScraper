@@ -64,12 +64,12 @@ class PostCrawler:
         article['article_id'] = self.article_id
         article['last_snapshot_at'] = now
         article['next_snapshot_at'] = now + 259200  # 3 days
-        article['snapshot_count'] += 1
+        article['snapshot_count'] = original_article['snapshot_count']+1
         if original_article['first_snapshot_at'] == 0:
             article['first_snapshot_at'] = now
         else:
             article['first_snapshot_at'] = original_article['first_snapshot_at']
-        self.queries.update_article(article)
+        self.queries.update_article(**article)
 
     def get_raw_html(self):
         # to get the "current" post node 
