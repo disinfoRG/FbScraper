@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 import re
-import helper
+from helper import helper
 import page_parser_helper as ppa_helper
 
 class PageParser:

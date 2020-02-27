@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 # self-defined
 import db_manager as dbm
-import helper
+from helper import helper
 from settings import AIRTABLE_API_KEY
 
 headers = {
