@@ -19,13 +19,8 @@ replace <YOUR_EMAIL> and <YOUR_PASSWORD> to your facebook's email and password
 $ echo FB_EMAIL=<YOUR_EMAIL> >> .env
 $ echo FB_PASSWORD=<YOUR_PASSWORD> >> .env
 ```
-4. update database from NewsScraping (https://github.com/disinfoRG/NewsScraping/blob/master/README.md#running)
-
-Required instruction from README.md#running as below:
-Then update your site table.  You need an API key from Airtable generated [here](https://airtable.com/account).  Add `AIRTABLE_API_KEY=<your_api_key>` to `.env`, and then:
+4. Update your site table.  You need an API key from Airtable generated [here](https://airtable.com/account).  Add `AIRTABLE_API_KEY=<your_api_key>` to `.env`, and then:
 ```sh
-$ cd NewsScraping && pipenv install
-$ pipenv run alembic upgrade head
 $ pipenv run scrapy crawl updateSites
 ```
 5. crawl new post urls for all sites
