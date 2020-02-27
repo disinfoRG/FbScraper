@@ -100,16 +100,6 @@ class PageCrawler:
         posts_urls = [self.extract_post_urls_from_post_element(ele) for ele in post_elements]
         return posts_urls
 
-    def scroll(self):
-        height_before_scroll = self.browser.execute_script("return document.body.scrollHeight")
-        # scroll
-        self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        helper.wait(10)
-        # compare height to see if there's new element loaded
-        height_after_scroll = self.browser.execute_script("return document.body.scrollHeight")
-
-        return height_before_scroll, height_after_scroll
-
     def log_crawler(self, viewed_count, new_count, existing_count, empty_count):
         timestamp = 'crawler_timestamp_{}: viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n'.format(helper.now(), viewed_count, new_count, existing_count, empty_count)
         self.logfile.write(timestamp)
