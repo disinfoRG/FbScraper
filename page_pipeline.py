@@ -1,6 +1,5 @@
 import zlib
-import time
-import helper
+from helper import helper
 
 
 class PagePipeline:

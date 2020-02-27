@@ -2,7 +2,7 @@ import os
 import re
 from tqdm import tqdm
 
-import helper
+from helper import helper
 
 def get_latest_created_logfile_path():
     logfiles = []
