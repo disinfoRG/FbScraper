@@ -137,13 +137,14 @@ class Handler:
             raise Exception('Please specified valid action')
 
         items = list(items)  # turn generator object into list of dict
+        print(items)
         items_len = len(items)
         dummy_items = range(items_len)
         dummy_item_chunks = helper.divide_chunks(dummy_items, self.n_amount_in_a_chunk)
 
         desc = '{} {}'.format(self.action, self.site_type)
         with tqdm(desc=desc, total=items_len) as pbar:
-            for c in dummy_item_chunks:
+            for c in range(len(dummy_item_chunks)):
                 n_realtime_item = items[c*self.n_amount_in_a_chunk:(c+1)*self.n_amount_in_a_chunk]
                 n_item_for_pool = helper.to_tuples(n_realtime_item)
 
@@ -290,7 +291,11 @@ def main():
             helper.print_error(e)
             raise
 
-    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id, max_auto_times=max_auto_times)
+    main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout,
+                           is_headless=is_headless, max_amount_of_items=max_amount_of_items,
+                           n_amount_in_a_chunk=n_amount_in_a_chunk,
+                           break_between_process=break_between_process,
+                           specific_site_id=specific_site_id, max_auto_times=max_auto_times)
     main_handler.handle()
     
 
