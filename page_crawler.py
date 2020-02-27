@@ -40,11 +40,6 @@ class PageCrawler:
 
         while empty_count < self.max_try_times:
             self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
-
-            # # check if browser is hanging or site is loaded to the end
-            # height_before, height_after = self.scroll()
-            # if height_after <= height_before:
-            #     break
             helper.scroll(self.browser)
             helper.wait()
 
