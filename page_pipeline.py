@@ -1,6 +1,7 @@
 import zlib
 from helper import helper
 
+
 class PagePipeline:
     def __init__(self, post_urls, site_id, db_manager, logfile):
         self.post_urls = post_urls
@@ -33,10 +34,12 @@ class PagePipeline:
         p['url'] = url
         p['site_id'] = self.site_id
         p['article_type'] = 'FBPost'
+        p['created_at'] = int(time.time())
         p['redirect_to'] = None
 
         db_id = self.db_manager.insert_article(p)
         self.log_pipeline('Article', db_id, p)
+
 
 def main():
     import db_manager
