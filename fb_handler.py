@@ -10,24 +10,10 @@ multiprocessing.set_start_method('spawn', True)
 # self-defined
 from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-from post_spider import PostSpider
-from page_spider import PageSpider
+from post_crawler import PostCrawler
+from page_crawler import PageCrawler
 from helper import helper, SelfDefinedError
-from config import \
-    DISCOVER_ACTION, \
-    UPDATE_ACTION, \
-    GROUP_SITE_TYPE, \
-    PAGE_SITE_TYPE, \
-    DISCOVER_TIMEOUT, \
-    UPDATE_TIMEOUT, \
-    DEFAULT_IS_LOGINED, \
-    DEFAULT_IS_HEADLESS, \
-    DEFAULT_MAX_AMOUNT_OF_ITEMS, \
-    DEFAULT_N_AMOUNT_IN_A_CHUNK, \
-    ITEM_PROCESS_COUNTDOWN_DESCRIPTION, \
-    TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
-    DEFAULT_BREAK_BETWEEN_PROCESS, \
-    DEFAULT_MAX_AUTO_TIMES
+import config
 
 
 queries = pugsql.module('queries')
@@ -48,34 +34,37 @@ class Handler:
         self.max_auto_times = max_auto_times
 
     def log_handler(self, logfile, description, parameters, result=None):
-        timestamp = None
         if result is not None:
             timestamp = 'handler_timestamp_{}: {}, {}, result is {} \n'.format(helper.now(), description, parameters, result)
         else:
             timestamp = 'handler_timestamp_{}: {}, {} \n'.format(helper.now(), description, parameters)
         logfile.write(timestamp)
 
-    def update_one(self, article, browser, logfile, is_group_site_type):
+    def update_one(self, article, browser, logfile):
         article_id = article['article_id']
         article_url = article['url']
-        ps = PostSpider(article_url, article_id, browser, logfile, is_logined=self.is_logined)
-        ps.work()
+        process = PostCrawler(url=article_url, article_id=article_id, browser=browser,
+                              queries=queries, logfile=logfile, is_logined=self.is_logined,
+                              timeout=config.UPDATE_CRAWLER_TIMEOUT)
+        process.crawl_and_save()
 
     def discover_one(self, site, browser, logfile, is_group_site_type, max_try_times=None):
         site_url = site['url']
         site_id = site['site_id']
-        existing_article_urls = [x['url'] for x in queries.get_article_urls_of_site(site_id=site_id)]
-        should_use_original_url = is_group_site_type
-        ps = PageSpider(site_url, site_id, browser, existing_article_urls, logfile, max_try_times, should_use_original_url)
-        ps.work()
+        existing_urls = [x['url'] for x in queries.get_article_urls_of_site(site_id=site_id)]
+        process = PageCrawler(url=site_url, site_id=site_id, browser=browser, queries=queries,
+                              existing_article_urls=existing_urls,
+                              logfile=logfile, max_try_times=max_try_times,
+                              should_use_original_url=is_group_site_type)
+        process.crawl()
 
     def process_one(self, item, browser, logfile):
-        is_group_site_type = True if self.site_type == GROUP_SITE_TYPE else False
+        is_group_site_type = True if self.site_type == config.GROUP_SITE_TYPE else False
 
-        if self.action == DISCOVER_ACTION:
+        if self.action == config.DISCOVER_ACTION:
             self.discover_one(item, browser, logfile, is_group_site_type)
-        elif self.action == UPDATE_ACTION:
-            self.update_one(item, browser, logfile, is_group_site_type)
+        elif self.action == config.UPDATE_ACTION:
+            self.update_one(item, browser, logfile)
 
     def process_item(self, item, should_show_progress=True):
         errors = []
@@ -123,24 +112,24 @@ class Handler:
         logfile.write('[{}][process_item] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, spent, self.action, self.site_type, item))
         logfile.close()
         
-        response = {}
+        response = dict()
         response['errors'] = errors
         response['is_security_check'] = is_security_check
         response['url'] = item['url']
         return response
 
-    def countdown(self, period, desc=ITEM_PROCESS_COUNTDOWN_DESCRIPTION):
+    def countdown(self, period, desc=config.ITEM_PROCESS_COUNTDOWN_DESCRIPTION):
         with tqdm(desc=desc, total=period) as pbar:
             for i in range(period):
                 helper.wait(1)
                 pbar.update(1)
 
     def handle(self):
-        if self.action == UPDATE_ACTION:
+        if self.action == config.UPDATE_ACTION:
             items = queries.get_articles_need_to_update(site_id=self.specific_site_id,
                                                         now=int(time.time()),
                                                         amount=self.max_amount_of_items)
-        elif self.action == DISCOVER_ACTION:
+        elif self.action == config.DISCOVER_ACTION:
             items = queries.get_sites_need_to_discover(site_type=self.site_type,
                                                        site_id=self.specific_site_id,
                                                        amount=self.max_amount_of_items)
@@ -206,8 +195,8 @@ class Handler:
 
                 pbar.update(self.n_amount_in_a_chunk)
 
-                break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS) if not self.break_between_process else self.break_between_process
-                self.countdown(break_time, desc=TAKE_A_BREAK_COUNTDOWN_DESCRIPTION)
+                break_time = helper.random_int(config.DEFAULT_BREAK_BETWEEN_PROCESS) if not self.break_between_process else self.break_between_process
+                self.countdown(break_time, desc=config.TAKE_A_BREAK_COUNTDOWN_DESCRIPTION)
 
 def main():
     argument_parser = argparse.ArgumentParser()
@@ -228,28 +217,28 @@ def main():
 
     action = None
     site_type = None
-    is_logined = DEFAULT_IS_LOGINED    
+    is_logined = config.DEFAULT_IS_LOGINED
     timeout = None
-    is_headless = DEFAULT_IS_HEADLESS
-    max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
-    n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK
+    is_headless = config.DEFAULT_IS_HEADLESS
+    max_amount_of_items = config.DEFAULT_MAX_AMOUNT_OF_ITEMS
+    n_amount_in_a_chunk = config.DEFAULT_N_AMOUNT_IN_A_CHUNK
     break_between_process = None
     specific_site_id = None
-    max_auto_times = DEFAULT_MAX_AUTO_TIMES
+    max_auto_times = config.DEFAULT_MAX_AUTO_TIMES
 
     if args.discover:
-        action = DISCOVER_ACTION
-        timeout = DISCOVER_TIMEOUT
+        action = config.DISCOVER_ACTION
+        timeout = config.DISCOVER_TIMEOUT
     elif args.update:
-        action = UPDATE_ACTION
-        timeout = UPDATE_TIMEOUT
+        action = config.UPDATE_ACTION
+        timeout = config.UPDATE_TIMEOUT
     else:
         return
 
     if args.group:
-        site_type = GROUP_SITE_TYPE
+        site_type = config.GROUP_SITE_TYPE
     elif args.page:
-        site_type = PAGE_SITE_TYPE
+        site_type = config.PAGE_SITE_TYPE
     else:
         return
 
