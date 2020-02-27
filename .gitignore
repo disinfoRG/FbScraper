@@ -9,6 +9,7 @@ __pycache__/
 *.json
 *.ipynb
 *.error
+.idea/
 .env_default
 backup_logs_20200212/
 middle2_log_backup/
