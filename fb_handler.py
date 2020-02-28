@@ -156,9 +156,11 @@ class Handler:
                 countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
                 countdown_process.start()
 
-                with multiprocessing.Pool(processes=self.n_amount_in_a_chunk) as pool:
+                # maxtasksperchild=1 by https://stackoverflow.com/a/54975030
+                with multiprocessing.Pool(processes=self.n_amount_in_a_chunk, maxtasksperchild=1) as pool:
                     note = 'n_item_for_pool={}, self={}'.format(n_item_for_pool, self)
                     pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
+
                     try:
                         n_item_result = pool_result.get(timeout=self.timeout)
                         print(n_item_result)
@@ -166,13 +168,19 @@ class Handler:
                         helper.print_error(e, note)
                     except Exception as e:
                         helper.print_error(e, note)
-                        raise
+
+                    pool.close()
+                    pool.join()
+                    del pool
+                    print('---------------------------------------------------------------- del pool end')
                         
                 try:
                     countdown_process.terminate()
+                    countdown_process.join()
+                    print('---------------------------------------------------------------- countdown_process end')
                 except Exception as e:
                     helper.print_error(e)
-                
+                    
                 try:
                     # check if facebook block
                     for a_item_result in n_item_result:
@@ -196,10 +204,12 @@ class Handler:
                 # for multiprocessing.context.TimeoutError cause 'NoneType' object is not iterable
                 except TypeError as e:
                     pass
+                except Exception as e:
+                    helper.print_error(e)
 
                 pbar.update(self.n_amount_in_a_chunk)
 
-                break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS) if not self.break_between_process else self.break_between_process
+                break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS) if self.break_between_process is None else self.break_between_process
                 self.countdown(break_time, desc=TAKE_A_BREAK_COUNTDOWN_DESCRIPTION)
 
 def main():
