@@ -34,7 +34,7 @@ class PagePipeline:
         p['url'] = url
         p['site_id'] = self.site_id
         p['article_type'] = 'FBPost'
-        p['created_at'] = int(time.time())
+        p['created_at'] = helper.now()
         p['redirect_to'] = None
 
         db_id = self.db_manager.insert_article(p)
