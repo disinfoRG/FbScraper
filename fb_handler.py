@@ -12,7 +12,7 @@ import random
 from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from post_spider import PostSpider
-from page_spider import PageSpider
+from discover_spider import DiscoverSpider
 from logger import Logger
 from helper import helper, SelfDefinedError
 import db_manager
@@ -63,8 +63,8 @@ class Handler:
         site_id = site['site_id']
         existing_article_urls = db_manager.get_articles_by_site_id(site_id)
         should_use_original_url = is_group_site_type
-        ps = PageSpider(site_url, site_id, browser, existing_article_urls, logfile, max_try_times, should_use_original_url)
-        ps.work()
+        spider = DiscoverSpider(site_url, site_id, browser, existing_article_urls, logfile, max_try_times, should_use_original_url)
+        spider.work()
 
     def process_one(self, item, browser, logfile):
         is_group_site_type = True if self.site_type == GROUP_SITE_TYPE else False

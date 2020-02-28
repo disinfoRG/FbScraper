@@ -1,16 +1,16 @@
 from helper import helper
-import page_parser_helper as ppa_helper
 from bs4 import BeautifulSoup
 
 MAX_TRY_TIMES_DEFAULT = 3
 
-class PageCrawler:
-    def __init__(self, url, browser, existing_article_urls, write_to_db_func, logfile, max_try_times=MAX_TRY_TIMES_DEFAULT, should_use_original_url=False):
+class DiscoverCrawler:
+    def __init__(self, url, browser, existing_article_urls, parser, pipeline, logfile, max_try_times=MAX_TRY_TIMES_DEFAULT, should_use_original_url=False):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
         self.max_try_times = max_try_times if max_try_times else MAX_TRY_TIMES_DEFAULT
-        self.write_to_db_func = write_to_db_func
+        self.parser = parser
+        self.pipeline = pipeline
         self.logfile = logfile
         self.should_use_original_url = should_use_original_url
 
@@ -61,7 +61,7 @@ class PageCrawler:
             else:
                 for p_url in new_post_urls:
                     if p_url:
-                        self.write_to_db_func(p_url)
+                        self.pipeline.write_post_url(p_url)
 
                 # reset empty count check when new_count > 0
                 empty_count = 0
@@ -71,9 +71,7 @@ class PageCrawler:
         return list(set(post_urls) - set(self.existing_article_urls))
 
     def get_post_urls(self):
-        soup = BeautifulSoup(self.browser.page_source, 'html.parser')
-        post_elements = soup.find_all('div', {'class': 'userContentWrapper'})
-        return [ppa_helper.get_post_url(post) for post in post_elements]
+        return self.parser.get_post_urls(self.browser.page_source)
 
     def scroll(self):
         height_before_scroll = self.browser.execute_script("return document.body.scrollHeight")
