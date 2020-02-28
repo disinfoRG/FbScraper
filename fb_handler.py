@@ -131,13 +131,11 @@ class Handler:
                                                         amount=self.max_amount_of_items)
         elif self.action == config.DISCOVER_ACTION:
             items = queries.get_sites_need_to_discover(site_type=self.site_type,
-                                                       site_id=self.specific_site_id,
                                                        amount=self.max_amount_of_items)
         else:
             raise Exception('Please specified valid action')
 
         items = list(items)  # turn generator object into list of dict
-        print(items)
         items_len = len(items)
         dummy_items = range(items_len)
         dummy_item_chunks = helper.divide_chunks(dummy_items, self.n_amount_in_a_chunk)
