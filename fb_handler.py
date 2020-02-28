@@ -72,8 +72,6 @@ class Handler:
         start_at = helper.now()
 
         fpath = '{}-{}_pid_{}_timestamp_{}.log'.format(self.action, self.site_type, pid, start_at)
-        print(fpath)
-        print(item)
         logfile = open(fpath, 'a', buffering=1)
         sys.stdout = logfile
         if not should_show_progress:
@@ -214,10 +212,7 @@ def main():
     argument_parser.add_argument('-a', '--auto', action='store', help='max times of automatically switch between login and without-login for any error, default auto-switch max times is 0')
     args = argument_parser.parse_args()
 
-    action = None
-    site_type = None
     is_logined = config.DEFAULT_IS_LOGINED
-    timeout = None
     is_headless = config.DEFAULT_IS_HEADLESS
     max_amount_of_items = config.DEFAULT_MAX_AMOUNT_OF_ITEMS
     n_amount_in_a_chunk = config.DEFAULT_N_AMOUNT_IN_A_CHUNK
