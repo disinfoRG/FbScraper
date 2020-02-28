@@ -11,7 +11,7 @@ import random
 # self-defined
 from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-from post_spider import PostSpider
+from update_spider import UpdateSpider
 from discover_spider import DiscoverSpider
 from logger import Logger
 from helper import helper, SelfDefinedError
@@ -55,8 +55,8 @@ class Handler:
     def update_one(self, article, browser, logfile, is_group_site_type):
         article_id = article['article_id']
         article_url = article['url']
-        ps = PostSpider(article_url, article_id, browser, logfile, is_logined=self.is_logined)
-        ps.work()
+        spider = UpdateSpider(article_url, article_id, browser, logfile, is_logined=self.is_logined)
+        spider.work()
 
     def discover_one(self, site, browser, logfile, is_group_site_type, max_try_times=None):
         site_url = site['url']

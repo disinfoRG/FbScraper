@@ -4,36 +4,36 @@ import re
 from random import uniform
 
 
-class PostParser:
-    def __init__(self, fb_browser, post_url):
-        self.post_url = post_url
-        self.fb_browser = fb_browser
-        self.fb_browser.driver.get(post_url)
-        time.sleep(uniform(2, 4))
-        self.post_html = self.fb_browser.driver.page_source
+class UpdateParser:
+    def __init__(self, raw_html=None):
+        if raw_html:
+            self.set_soup(raw_html)
 
-        self.soup = BeautifulSoup(self.post_html, 'html.parser')
+    def set_soup(self, raw_html):
+        self.soup = BeautifulSoup(raw_html, 'html.parser')
+    
+    def get_post_raw_html(self, page_source=None):
+        if page_source:
+            self.set_soup(page_source)
 
-    def get_post_id(self):
-        if 'story_fbid' in self.post_url:
-            post_id = re.search('story_fbid=(\d+)', self.post_url).group(1)
-        else:
-            post_id = self.post_url.strip('/').split('/')[-1]
-        return post_id
+        try:
+            selector = '.permalinkPost'
+            raw_html = str(self.soup.select(selector)[0])
+            return raw_html
+        except:
+            pass
 
-    def get_post_type(self):
-        if 'posts' in self.post_url:
-            post_type = 'post'
-        elif 'videos' in self.post_url:
-            post_type = 'video'
-        elif 'story_fbid' in self.post_url:
-            post_type = 'story'
-        elif 'photos' in self.post_url:
-            post_type = 'photo'
-        else:
-            post_type = 'unknown'
+        try:
+            selector = '.userContentWrapper'
+            raw_html = str(self.soup.select(selector)[0])
+            return raw_html
+        except:
+            pass
 
-        return post_type
+        # return whole page's html if cannot locate post node  
+        # ex. failed for non-existing article: https://www.facebook.com/fuqidao168/posts/2466415456951685
+        # ex. failed for some video post: https://www.facebook.com/znk168/posts/412649276099554        
+        return page_source
 
     def get_publish_time(self):
         publish_time = self.soup.find('abbr', {'class': 'livetimestamp'})['data-utime']
@@ -53,44 +53,6 @@ class PostParser:
             content_text = ''
         return content_text
 
-    def get_reactions(self):
-        reactions = dict()
-        # comment count
-        comment_count_str = self.soup.find('a', {'data-testid': 'UFI2CommentsCount/root'}).text
-        comment_count = re.search('(\d+)', comment_count_str).group(1)
-        reactions["comments"] = int(comment_count)
-
-        # share count
-        share_count_str = self.soup.find('a', {'data-testid': 'UFI2SharesCount/root'}).text
-        share_count = re.search('(\d+)', share_count_str).group(1)
-        reactions["shares"] = int(share_count)
-
-        # sticker reactions
-        reaction_btn = self.fb_browser.driver.find_element_by_class_name('_81hb')
-        self.fb_browser.driver.execute_script('arguments[0].click()', reaction_btn)
-        time.sleep(5)
-        reaction_ele = self.fb_browser.driver.find_element_by_css_selector('ul[defaultactivetabkey="all"')
-        reaction_texts = [x.get_attribute('aria-label') for x in reaction_ele.find_elements_by_css_selector('span[aria-label]')]
-        index_of_total = [i for i, t in enumerate(reaction_texts) if '心情' in t][0]
-        total_count_str = re.search('(\d+)', reaction_texts[index_of_total]).group(1)
-        reactions["reactions"] = int(total_count_str)
-
-        reaction_ch_to_eng = {"讚": "like", "大心": "love", "哈": "haha", "哇": "wow", "怒": "anger"}
-        for t in reaction_texts[index_of_total+1:]:
-            for k in reaction_ch_to_eng:
-                if k in t:
-                    count_str = re.search('(\d+)', t).group(1)
-                    reactions[reaction_ch_to_eng[k]] = int(count_str)
-                    reaction_ch_to_eng.pop(k)
-                    break
-
-        # close reaction panel
-        close_btn = self.fb_browser.driver.find_element_by_css_selector('a[data-testid="reactions_profile_browser:close"]')
-        self.fb_browser.driver.execute_script('arguments[0].click()', close_btn)
-
-        return reactions
-
-
     def get_comments(self):
         comments = []
 
@@ -109,7 +71,7 @@ class PostParser:
 
     def get_comment_info(self, comment):
         c = {}
-        c['url'] = ppa_helper.get_comment_url(comment)
+        c['url'] = self.get_comment_url(comment)
         c['raw_html'] = str(comment)
         return c
 
@@ -131,14 +93,40 @@ class PostParser:
                       }
 
         return post_infos
+    
+    def get_comment_url(self, comment_node):
+        permalink_node = None
+        permalink_href = None
+        
+        url_selector = helper.data_testidify('UFI2CommentActionLinks/root')
+        url_nodes = comment_node.select(url_selector)
+
+        try:
+            permalink_node = url_nodes[0].select('li:nth-child(3) > a')
+            permalink_href = permalink_node[0].get('href')
+        except NoSuchElementException:
+            # url_node.get_attribute('innerHTML')
+            # '<li class="_6coj"><span aria-hidden="true" class="_6cok">&nbsp;·&nbsp;</span><a class="_6qw7" data-ft="{&quot;tn&quot;:&quot;N&quot;}" href="https://www.facebook.com/eatnews/posts/470559583662483?comment_id=470610556990719"><abbr data-tooltip-content="2020年1月1日 星期三下午1:51" data-hover="tooltip" minimize="true" class="livetimestamp" data-utime="1577857868" data-minimize="true">1天</abbr></a></li>'
+            # selenium.common.exceptions.NoSuchElementException: Message: no such element: Unable to locate element: {"method":"css selector","selector":"li:nth-child(3) > a"}
+            # 'https://www.facebook.com/eatnews/posts/470559583662483?comment_id=470610556990719'
+            permalink_href = url_nodes[0].select('a')[0].get('href')
+        except Exception as e:
+            Helper.print_error(e)
+            pass
+
+        return permalink_href
 
 
 if __name__ == '__main__':
+    from helper import helper
     from config import fb
-    fb.start()
+    fb.start(False)
     post_url = 'https://www.facebook.com/eatnews/posts/468883017163473'
-    p = PostParser(fb, post_url)
-    parsed_post = p.parse()
+    fb.driver.get(post_url)
+    helper.wait()
+    parser = UpdateParser()
+    parsed_post = parser.get_post_raw_html(fb.driver.page_source)
+    print()
 
 
 

@@ -4,7 +4,7 @@ from helper import helper
 STATUS_SUCCESS = 'SUCCESS'
 STATUS_FAILED = 'FAILED'
 
-class PostPipeline():
+class UpdatePipeline():
     def __init__(self, post_urls, article_id, db_manager, logfile, next_snapshot_at_interval=60*60*24*3):
         self.post_urls = post_urls
         self.db_manager = db_manager
@@ -83,7 +83,7 @@ def main():
 
     fpath = 'test_post_pipeline_{}.log'.format(helper.now())
     logfile = Logger(open(fpath, 'a', buffering=1))
-    pipeline = PostPipeline([], 1426, db_manager, logfile)
+    pipeline = UpdatePipeline([], 1426, db_manager, logfile)
     raw_data = 'sssaAAAAaaa'
     pipeline.pipe_single_post_raw_data(raw_data)
     print('pause')

@@ -3,12 +3,13 @@ from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBo
 import re
 from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
 
-class PostCrawler:
-    def __init__(self, url, browser, write_to_db, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
+class UpdateCrawler:
+    def __init__(self, url, browser, parser, pipeline, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.post_node = None
-        self.write_to_db = write_to_db
+        self.parser = parser
+        self.pipeline = pipeline
         self.logfile = logfile
         self.max_try_times = max_try_times
         self.is_logined = is_logined
@@ -43,16 +44,11 @@ class PostCrawler:
 
     def save(self):
         raw_html = self.get_raw_html()
-        self.write_to_db and self.write_to_db(raw_html)
+        self.pipeline and self.pipeline.pipe_single_post_raw_data(raw_html)
 
     def get_raw_html(self):
-        # to get the "current" post node 
-        self.locate_target_post()
+        return self.parser.get_post_raw_html(self.browser.page_source)
 
-        if self.post_node is not None:
-            return helper.get_html(self.post_node)
-        else:
-            return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
 
     def enter_site(self):
         post_root_url = self.url

@@ -164,14 +164,12 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
 
 # File Relationship
 ## `python3 fb_hanlder.py --discover` related files
-- page_spider.py
-    - page_crawler.py
-    - page_parser.py
-        - page_parser_helper.py
-    - page_pipeline.py
+- discover_spider.py
+- discover_crawler.py
+- discover_parser.py
+- discover_pipeline.py
 ## `python3 fb_hanlder.py --update` related files
-- post_crawler.py
-    - post_crawler.py
-    - post_parser.py
-        - post_parser_helper.py
-    - post_pipeline.py
+- update_spider.py
+- update_crawler.py
+- update_parser.py
+- update_pipeline.py
