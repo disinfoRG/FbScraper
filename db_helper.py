@@ -1,4 +1,5 @@
 import zlib
+import time
 
 def get_merged_item(item, db_row):
     return {**item, **db_row}
@@ -28,6 +29,7 @@ def get_article(item, article_type='post'):
     article['next_snapshot_at'] = next_snapshot_at
     article['redirect_to'] = redirect_to
     article['snapshot_count'] = snapshot_count
+    article['created_at'] = int(time.time())
 
     return article
 
