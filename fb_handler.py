@@ -10,8 +10,8 @@ multiprocessing.set_start_method('spawn', True)
 # self-defined
 from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-from post_crawler import PostCrawler
-from page_crawler import PageCrawler
+from discover_crawler import DiscoverCrawler
+from update_crawler import UpdateCrawler
 from helper import helper, SelfDefinedError
 import config
 
@@ -43,19 +43,19 @@ class Handler:
     def update_one(self, article, browser, logfile):
         article_id = article['article_id']
         article_url = article['url']
-        process = PostCrawler(url=article_url, article_id=article_id, browser=browser,
-                              queries=queries, logfile=logfile, is_logined=self.is_logined,
-                              timeout=config.UPDATE_CRAWLER_TIMEOUT)
+        process = UpdateCrawler(url=article_url, article_id=article_id, browser=browser,
+                                queries=queries, logfile=logfile, is_logined=self.is_logined,
+                                timeout=config.UPDATE_CRAWLER_TIMEOUT)
         process.crawl_and_save()
 
     def discover_one(self, site, browser, logfile, is_group_site_type, max_try_times=None):
         site_url = site['url']
         site_id = site['site_id']
         existing_urls = [x['url'] for x in queries.get_article_urls_of_site(site_id=site_id)]
-        process = PageCrawler(url=site_url, site_id=site_id, browser=browser, queries=queries,
-                              existing_article_urls=existing_urls,
-                              logfile=logfile, max_try_times=max_try_times,
-                              should_use_original_url=is_group_site_type)
+        process = DiscoverCrawler(url=site_url, site_id=site_id, browser=browser, queries=queries,
+                                  existing_article_urls=existing_urls,
+                                  logfile=logfile, max_try_times=max_try_times,
+                                  should_use_original_url=is_group_site_type)
         process.crawl()
 
     def process_one(self, item, browser, logfile):

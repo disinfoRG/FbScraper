@@ -5,7 +5,7 @@ import time
 from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
 
 
-class PostCrawler:
+class UpdateCrawler:
     def __init__(self, url, article_id, browser, queries, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
         self.url = helper.get_clean_url(url)
         self.article_id = article_id

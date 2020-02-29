@@ -5,7 +5,7 @@ from helper import helper
 from config import DEFAULT_MAX_TRY_TIMES
 
 
-class PageCrawler:
+class DiscoverCrawler:
     def __init__(self, url, site_id, browser, existing_article_urls, queries, logfile, max_try_times, should_use_original_url=False):
         self.url = helper.get_clean_url(url)
         self.site_id = site_id
