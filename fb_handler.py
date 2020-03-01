@@ -31,7 +31,7 @@ from config import \
     TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
     DEFAULT_MAX_AUTO_TIMES
-class Handler:
+class Handler(object):
     def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id, max_auto_times):
         self.action = action
         self.site_type = site_type
@@ -54,7 +54,8 @@ class Handler:
 
     def update_one(self, article, browser, logfile, is_group_site_type):
         article_id = article['article_id']
-        article_url = article['url']
+        # article_url = article['url']
+        article_url = 'https://google.com'
         spider = UpdateSpider(article_url, article_id, browser, logfile, is_logined=self.is_logined)
         spider.work()
 
@@ -147,40 +148,50 @@ class Handler:
 
         desc = '{} {}'.format(self.action, self.site_type)
         with tqdm(desc=desc, total=items_len) as pbar:
+            stop_at_count = 100
+            current_count = 0
             for _ in dummy_item_chunks:
+                if current_count == stop_at_count:
+                    helper.wait(1000000)
+                current_count += 1 
                 n_realtime_item = get_items(site_type=self.site_type, site_id=self.specific_site_id, amount=self.n_amount_in_a_chunk)
                 n_item_for_pool = helper.to_tuples(n_realtime_item)
 
                 n_item_result = None
                 
-                countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
-                countdown_process.start()
+                pool_countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
 
                 # maxtasksperchild=1 by https://stackoverflow.com/a/54975030
-                with multiprocessing.Pool(processes=self.n_amount_in_a_chunk, maxtasksperchild=1) as pool:
-                    note = 'n_item_for_pool={}, self={}'.format(n_item_for_pool, self)
-                    pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
+                pool = multiprocessing.Pool(processes=self.n_amount_in_a_chunk, maxtasksperchild=1)
+                note = 'n_item_for_pool={}, self={}'.format(n_item_for_pool, self)
+                pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
+                pool_countdown_process.start()
 
-                    try:
-                        n_item_result = pool_result.get(timeout=self.timeout)
-                        print(n_item_result)
-                    except multiprocessing.context.TimeoutError as e:
-                        helper.print_error(e, note)
-                    except Exception as e:
-                        helper.print_error(e, note)
-
-                    pool.close()
-                    pool.join()
-                    del pool
-                    print('---------------------------------------------------------------- del pool end')
-                        
                 try:
-                    countdown_process.terminate()
-                    countdown_process.join()
-                    print('---------------------------------------------------------------- countdown_process end')
+                    n_item_result = pool_result.get(timeout=self.timeout)
+                    print(n_item_result)
+                except multiprocessing.context.TimeoutError as e:
+                    pass
                 except Exception as e:
-                    helper.print_error(e)
-                    
+                    helper.print_error(e, note)
+                
+                pool.close()
+                pool.join()
+                pool_countdown_process.terminate()
+                pool_countdown_process.join()        
+
+                while True:
+                    act = multiprocessing.active_children()
+                    if len(act)==0:
+                        break
+                    print("----------- Waiting for %d workers to finish ----------- "%len(act))
+                    helper.wait(1)
+
+                print('-------- Kill Zombie Processes --------')
+                helper.kill_zombie()
+
+                print('---------------------------------------------------------------- cleaned up unused memory')
+
                 try:
                     # check if facebook block
                     for a_item_result in n_item_result:

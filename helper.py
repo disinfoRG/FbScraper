@@ -17,6 +17,36 @@ class Helper:
     def __init__(self):
         return
 
+    def kill_zombie(self):
+        # - kill zombie processes
+        kill_zombie_command = "\
+            running_zid=$(ps aux | grep -w Z | grep -v grep | awk '{print $2}' ORS=' ') \
+            && echo Chrome Window Session PID: $running_zid \
+            && kill $running_zid 2>&1 \
+            && wait $running_zid \
+        " 
+
+        # - kill all chrome window session 
+        kill_session_command = "\
+            running_sid=$(ps aux | grep 'Chrome' | grep -v grep | awk '{print $2}' ORS=' ') \
+            && echo Chrome Window Session PID: $running_sid \
+            && kill $running_sid 2>&1 \
+            && wait $running_sid \
+        "
+
+        # - kill all webdriver
+        kill_webdriver_command = "\
+            running_wid=$(ps aux | grep 'chromedriver' | grep -v grep | awk '{print $2}' ORS=' ') \
+            && echo Webdriver PID: $running_wid \
+            && kill $running_wid 2>&1 \
+            && wait $running_wid \
+        "
+        
+        os.system(kill_zombie_command)
+        os.system(kill_session_command)
+        os.system(kill_webdriver_command)        
+        helper.wait(5)        
+
     def has_file(self, fpath):
         try:
             return os.path.exists(fpath)
