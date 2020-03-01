@@ -90,8 +90,12 @@ class Handler(object):
         logfile.write('[{}][process_item] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, self.action, self.site_type, item))
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
-        fb.start(self.is_logined)
-        browser = fb.driver
+        try:
+            fb.start(self.is_logined)
+            browser = fb.driver
+        except:
+            if fb.driver is not None:
+                fb.driver.quit()
 
         error_note = 'file_path = {}, item = {}'.format(fpath, item)
         is_security_check = False
@@ -107,7 +111,7 @@ class Handler(object):
             error_msg = '[{}][process_item] Failed to {}-{} for item, error: {} \n'.format(helper.now(), self.action, self.site_type, helper.print_error(e, error_note))
             errors.append(error_msg)
             logfile.write(error_msg)
-        
+
         try:
             browser.quit()
             logfile.write('[{}][process_item] Quit Browser, result is SUCCESS \n'.format(helper.now()))
@@ -120,7 +124,7 @@ class Handler(object):
         spent = end_at - start_at
         logfile.write('[{}][process_item] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, spent, self.action, self.site_type, item))
         logfile.close()
-        
+
         response = {}
         response['errors'] = errors
         response['is_security_check'] = is_security_check
@@ -140,7 +144,7 @@ class Handler(object):
             get_items = db_manager.get_articles_need_to_update
         elif self.action == DISCOVER_ACTION:
             get_items = db_manager.get_sites_need_to_discover
-        
+
         items = get_items(site_type=self.site_type, site_id=self.specific_site_id,amount=self.max_amount_of_items)
         items_len = len(items)
         dummy_items = range(items_len)
@@ -153,12 +157,12 @@ class Handler(object):
             for _ in dummy_item_chunks:
                 if current_count == stop_at_count:
                     helper.wait(1000000)
-                current_count += 1 
+                current_count += 1
                 n_realtime_item = get_items(site_type=self.site_type, site_id=self.specific_site_id, amount=self.n_amount_in_a_chunk)
                 n_item_for_pool = helper.to_tuples(n_realtime_item)
 
                 n_item_result = None
-                
+
                 pool_countdown_process = multiprocessing.Process(target=self.countdown,args=(self.timeout,))
 
                 # maxtasksperchild=1 by https://stackoverflow.com/a/54975030
@@ -174,11 +178,11 @@ class Handler(object):
                     pass
                 except Exception as e:
                     helper.print_error(e, note)
-                
+
                 pool.close()
                 pool.join()
                 pool_countdown_process.terminate()
-                pool_countdown_process.join()        
+                pool_countdown_process.join()
 
                 while True:
                     act = multiprocessing.active_children()
@@ -209,7 +213,7 @@ class Handler(object):
                         if is_failed:
                             if self.max_auto_times > 0:
                                 self.max_auto_times -= 1
-                                self.is_logined = not self.is_logined                            
+                                self.is_logined = not self.is_logined
                             else:
                                 return
                 # for multiprocessing.context.TimeoutError cause 'NoneType' object is not iterable
@@ -226,11 +230,11 @@ class Handler(object):
 def main():
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument('-d', '--discover', action='store_true', help='save article urls for sites')
-    argument_parser.add_argument('-u', '--update', action='store_true', help='save html for articles')    
+    argument_parser.add_argument('-u', '--update', action='store_true', help='save html for articles')
     argument_parser.add_argument('-g', '--group', action='store_true', help='facebook group')
-    argument_parser.add_argument('-p', '--page', action='store_true', help='facebook page')    
+    argument_parser.add_argument('-p', '--page', action='store_true', help='facebook page')
     argument_parser.add_argument('-l', '--login', action='store_true', help='apply facebook login, default is without login')
-    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')    
+    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')
     argument_parser.add_argument('-nh', '--non-headless', action='store_true', help='browser in non-headless mode, default is headless')
     argument_parser.add_argument('-m', '--max', action='store', help='max amount of sites(by discover) or articles(by update) want to be accomplished, default is 2')
     argument_parser.add_argument('-c', '--cpu', action='store', help='how many cpu processes run at the same time, default is 2')
@@ -242,7 +246,7 @@ def main():
 
     action = None
     site_type = None
-    is_logined = DEFAULT_IS_LOGINED    
+    is_logined = DEFAULT_IS_LOGINED
     timeout = None
     is_headless = DEFAULT_IS_HEADLESS
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
@@ -286,13 +290,13 @@ def main():
         except Exception as e:
             helper.print_error(e)
             raise
-    
+
     if args.cpu:
         try:
             n_amount_in_a_chunk = int(args.cpu)
         except Exception as e:
             helper.print_error(e)
-            raise 
+            raise
 
     if args.between:
         try:
@@ -317,7 +321,7 @@ def main():
 
     main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id, max_auto_times=max_auto_times)
     main_handler.handle()
-    
+
 
 if __name__ == '__main__':
     main()
