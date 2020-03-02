@@ -2,9 +2,10 @@ from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
 from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
+from update_parser import UpdateParser
 
 class UpdateCrawler:
-    def __init__(self, url, browser, parser, pipeline, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
+    def __init__(self, url, browser, parser, pipeline, logfile, timeout, max_try_times=3, is_logined=DEFAULT_IS_LOGINED):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.post_node = None
@@ -44,7 +45,11 @@ class UpdateCrawler:
 
     def save(self):
         raw_html = self.get_raw_html()
-        self.pipeline and self.pipeline.pipe_single_post_raw_data(raw_html)
+        try:
+            self.pipeline and self.pipeline.pipe_single_post_raw_data(raw_html)
+        except Exception as e:
+            helper.print_error(e)
+            raise
 
     def get_raw_html(self):
         return self.parser.get_post_raw_html(self.browser.page_source)
@@ -198,10 +203,14 @@ class UpdateCrawler:
 
                 self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
                 helper.wait()
-                
+                            
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to load comment at depth level #{} with selector "{}", error is {} \n'.format(helper.now(), depth, comment_expander_selector, helper.print_error(e))
             self.logfile.write(failed_status)
+
+        crawled_time = helper.now() - self.start_at
+        time_status = '[{}][update_crawler.py - load_comment] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
+        print(time_status)
 
 def test_robot_check(url):
     is_robot_url = re.match('.*/checkpoint.*', url)
@@ -217,8 +226,8 @@ def main():
     # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675' # hundreds comments
     # article_url = 'https://www.facebook.com/eatnews/posts/488393351879106' # thounds shares
     # article_url = 'https://www.facebook.com/lovebakinglovehealthy/posts/1970662936284274' # no comments
-    article_url = 'https://www.facebook.com/fuqidao168/posts/2466415456951685' # non-existing article
-    # article_url = 'https://www.facebook.com/twherohan/posts/2461318357438647' # ten-thousands comments
+    # article_url = 'https://www.facebook.com/fuqidao168/posts/2466415456951685' # non-existing article
+    article_url = 'https://www.facebook.com/twherohan/posts/2461318357438647' # ten-thousands comments
     
     start_time = helper.now()
     print('[{}][main] Start'.format(start_time))
@@ -234,8 +243,11 @@ def main():
     fpath = 'test_post_crawler_{}.log'.format(helper.now())
     logfile = Logger(open(fpath, 'a', buffering=1))
 
-    with open('cannot-locate-post-node_NoSuchElementException.html', 'w') as html_file:
-        pc = PostCrawler(article_url, browser, html_file.write, logfile)
+    
+    # with open('cannot-locate-post-node_NoSuchElementException.html', 'w') as html_file:
+    with open('test-timeout.html', 'w') as html_file:
+        parser = UpdateParser()
+        pc = UpdateCrawler(article_url, browser, parser, html_file.write, logfile, timeout=10)
         pc.crawl()
 
     browser.quit()

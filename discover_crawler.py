@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 MAX_TRY_TIMES_DEFAULT = 3
 
 class DiscoverCrawler:
-    def __init__(self, url, browser, existing_article_urls, parser, pipeline, logfile, max_try_times=MAX_TRY_TIMES_DEFAULT, should_use_original_url=False):
+    def __init__(self, url, browser, existing_article_urls, parser, pipeline, logfile, timeout, max_try_times=MAX_TRY_TIMES_DEFAULT, should_use_original_url=False):
         self.url = helper.get_clean_url(url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
@@ -13,8 +13,11 @@ class DiscoverCrawler:
         self.pipeline = pipeline
         self.logfile = logfile
         self.should_use_original_url = should_use_original_url
+        self.timeout = timeout
+        self.start_at = None
 
     def crawl(self):
+        self.start_at = helper.now()
         self.logfile.write('\n')
         self.enter_site()
         self.expand_post()
@@ -38,7 +41,7 @@ class DiscoverCrawler:
         new_count = 0
         empty_count = 0
 
-        while empty_count < self.max_try_times:
+        while (helper.now() - self.start_at) < self.timeout and empty_count < self.max_try_times:
             self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
 
             # # check if browser is hanging or site is loaded to the end
@@ -67,6 +70,10 @@ class DiscoverCrawler:
                 empty_count = 0
                 self.existing_article_urls += new_post_urls
 
+        crawled_time = helper.now() - self.start_at
+        time_status = '[{}][discover_crawler.py - expand_post] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
+        print(time_status)
+    
     def remove_old_post_urls(self, post_urls):
         return list(set(post_urls) - set(self.existing_article_urls))
 
