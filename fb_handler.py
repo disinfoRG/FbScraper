@@ -56,7 +56,7 @@ class Handler:
                                   existing_article_urls=existing_urls,
                                   logfile=logfile, max_try_times=max_try_times,
                                   should_use_original_url=is_group_site_type)
-        process.crawl()
+        process.crawl_and_save()
 
     def process_one(self, item, browser, logfile):
         is_group_site_type = True if self.site_type == config.GROUP_SITE_TYPE else False
@@ -128,8 +128,12 @@ class Handler:
                                                         now=int(time.time()),
                                                         amount=self.max_amount_of_items)
         elif self.action == config.DISCOVER_ACTION:
-            items = queries.get_sites_need_to_discover(site_type=self.site_type,
-                                                       amount=self.max_amount_of_items)
+            if self.specific_site_id:  # if given a site id
+                items = queries.get_site_by_id(site_id=self.specific_site_id)
+                items = [items]
+            else:
+                items = queries.get_sites_by_type(site_type=self.site_type,
+                                                  amount=self.max_amount_of_items)
         else:
             raise Exception('Please specified valid action')
 
