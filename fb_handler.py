@@ -69,7 +69,7 @@ class Handler:
         elif self.action == UPDATE_ACTION:
             self.update_one(item, browser, logfile, is_group_site_type, timeout)
 
-    def process_item(self, item, should_show_progress=True):
+    def process_item(self, item):
         errors = []
         pid = os.getpid()
         start_at = helper.now()
@@ -135,12 +135,13 @@ class Handler:
     def handle(self):
         items = []
         get_items = None
+
         if self.action == UPDATE_ACTION:
             get_items = db_manager.get_articles_need_to_update
         elif self.action == DISCOVER_ACTION:
             get_items = db_manager.get_sites_need_to_discover
         
-        items = get_items(site_type=self.site_type, site_id=self.specific_site_id,amount=self.max_amount_of_items)
+        items = get_items(site_type=self.site_type, site_id=self.specific_site_id, amount=self.max_amount_of_items)
         items_len = len(items)
         chunks = helper.divide_chunks(items, self.n_amount_in_a_chunk)
 

@@ -14,6 +14,6 @@ class UpdateSpider:
         self.timeout = timeout
     def work(self):
         parser = UpdateParser()
-        pipeline = UpdatePipeline([], self.article_id, db_manager, self.logfile)
+        pipeline = UpdatePipeline(self.article_id, db_manager, self.logfile)
         crawler = UpdateCrawler(self.article_url, self.browser, parser, pipeline, self.logfile, timeout=self.timeout, is_logined=self.is_logined)
         crawler.crawl()

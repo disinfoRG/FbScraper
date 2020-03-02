@@ -5,8 +5,8 @@ from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
 from update_parser import UpdateParser
 
 class UpdateCrawler:
-    def __init__(self, url, browser, parser, pipeline, logfile, timeout, max_try_times=3, is_logined=DEFAULT_IS_LOGINED):
-        self.url = helper.get_clean_url(url)
+    def __init__(self, article_url, browser, parser, pipeline, logfile, timeout, max_try_times=3, is_logined=DEFAULT_IS_LOGINED):
+        self.article_url = helper.get_clean_url(article_url)
         self.browser = browser
         self.post_node = None
         self.parser = parser
@@ -21,12 +21,12 @@ class UpdateCrawler:
 
     def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
-        self.logfile.write(timestamp)        
+        self.logfile and self.logfile.write(timestamp)        
 
     def crawl(self):
         try:
             self.start_at = helper.now()
-            self.logfile.write('\n')
+            self.logfile and self.logfile.write('\n')
             self.enter_site()
             is_located = self.locate_target_post()
 
@@ -39,7 +39,7 @@ class UpdateCrawler:
             self.save()
         except Exception as e:
             self.save()
-            note = 'url={}, is_logined={}'.format(self.url, self.is_logined)
+            note = 'url={}, is_logined={}'.format(self.article_url, self.is_logined)
             helper.print_error(e, note)
             raise
 
@@ -56,7 +56,7 @@ class UpdateCrawler:
 
 
     def enter_site(self):
-        post_root_url = self.url
+        post_root_url = self.article_url
 
         try:
             self.browser.get(post_root_url)
@@ -71,10 +71,10 @@ class UpdateCrawler:
                 raise SelfDefinedError('Encountered security check requiring user to login')
 
             success_status = 'crawler_timestamp_{}: successful to enter site with url "{}"'.format(helper.now(), post_root_url)
-            self.logfile.write(success_status)
+            self.logfile and self.logfile.write(success_status)
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to enter site with url "{}", error is {}'.format(helper.now(), post_root_url, helper.print_error(e))
-            self.logfile.write(failed_status)
+            self.logfile and self.logfile.write(failed_status)
             raise
 
         if not self.is_logined:
@@ -87,7 +87,7 @@ class UpdateCrawler:
             try:
                 helper.remove_element_by_selector(block_selector, self.browser)
                 removed_block_text = 'crawler_timestamp_{}: removed block element for non-logined browsing with selector="{}" \n'.format(helper.now(), block_selector)
-                self.logfile.write(removed_block_text)
+                self.logfile and self.logfile.write(removed_block_text)
             except Exception as e:
                 helper.print_error(e, block_selector)
 
@@ -97,12 +97,12 @@ class UpdateCrawler:
         self.post_node = helper.get_element(self.browser, selector)
 
         if not self.post_node:
-            post_not_found = 'crawler_timestamp_{}: failed and article not found with selector "{}", article url is {} \n'.format(helper.now(), selector, self.url)
-            self.logfile.write(post_not_found)
+            post_not_found = 'crawler_timestamp_{}: failed and article not found with selector "{}", article url is {} \n'.format(helper.now(), selector, self.article_url)
+            self.logfile and self.logfile.write(post_not_found)
             return False
         else:
-            post_is_found = 'crawler_timestamp_{}: success and article is located with selector "{}", article url is {} \n'.format(helper.now(), selector, self.url)
-            self.logfile.write(post_is_found)
+            post_is_found = 'crawler_timestamp_{}: success and article is located with selector "{}", article url is {} \n'.format(helper.now(), selector, self.article_url)
+            self.logfile and self.logfile.write(post_is_found)
             return True
 
     def is_robot_check(self):
@@ -159,15 +159,15 @@ class UpdateCrawler:
         
         try:
             helper.click_with_move(filter_menu_link_selector, self.browser)
-            self.logfile.write('crawler_timestamp_{}: clicked comment filter button with selector="{}" \n'.format(helper.now(), filter_menu_link_selector))
+            self.logfile and self.logfile.write('crawler_timestamp_{}: clicked comment filter button with selector="{}" \n'.format(helper.now(), filter_menu_link_selector))
             helper.move_to_element_by_selector(filter_menu_selector, self.browser)
-            self.logfile.write('crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(helper.now(), filter_menu_selector))
+            self.logfile and self.logfile.write('crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(helper.now(), filter_menu_selector))
             helper.click_with_move(unfiltered_option_selector, self.browser)
-            self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(helper.now(), unfiltered_option_selector))
+            self.logfile and self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(helper.now(), unfiltered_option_selector))
         except Exception as e:
             selector = '{} and {}'.format(filter_menu_link_selector, unfiltered_option_selector)
             failed_status = 'crawler_timestamp_{}: failed to turn off comment filter with selector "{}", error is {} \n'.format(helper.now(), selector, helper.print_error(e))
-            self.logfile.write(failed_status)
+            self.logfile and self.logfile.write(failed_status)
         
     def load_comment(self, depth, clicked_max_times=50):
         comment_expander_selector = '[data-testid="UFI2CommentsPagerRenderer/pager_depth_{}"]'.format(depth)
@@ -206,7 +206,7 @@ class UpdateCrawler:
                             
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to load comment at depth level #{} with selector "{}", error is {} \n'.format(helper.now(), depth, comment_expander_selector, helper.print_error(e))
-            self.logfile.write(failed_status)
+            self.logfile and self.logfile.write(failed_status)
 
         crawled_time = helper.now() - self.start_at
         time_status = '[{}][update_crawler.py - load_comment] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
