@@ -16,7 +16,7 @@ class DiscoverCrawler:
         self.logfile = logfile
         self.should_use_original_url = should_use_original_url
 
-    def crawl(self):
+    def crawl_and_save(self):
         self.logfile.write('\n')
         self.enter_site()
         self.expand_page_and_insert_article()
