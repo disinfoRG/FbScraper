@@ -1,4 +1,4 @@
--- :name get_sites_need_to_discover :many
+-- :name get_sites_by_type :many
 select * from Site
 where
   is_active = 1
