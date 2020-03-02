@@ -81,9 +81,14 @@ class Handler:
         print('[{}][process_item][pid={}] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, pid, self.action, self.site_type, item))
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
-        fb.start(self.is_logined)
-        browser = fb.driver
-        self.browsers.append(browser)
+        browser = None
+        try:
+            fb.start(self.is_logined)
+            browser = fb.driver
+            self.browsers.append(browser)
+        except:
+            if fb.driver is not None:
+                fb.driver.quit()
 
         error_note = 'process_status = {}, item = {}'.format(process_status, item)
         is_security_check = False
@@ -203,11 +208,11 @@ class Handler:
 def main():
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument('-d', '--discover', action='store_true', help='save article urls for sites')
-    argument_parser.add_argument('-u', '--update', action='store_true', help='save html for articles')    
+    argument_parser.add_argument('-u', '--update', action='store_true', help='save html for articles')
     argument_parser.add_argument('-g', '--group', action='store_true', help='facebook group')
-    argument_parser.add_argument('-p', '--page', action='store_true', help='facebook page')    
+    argument_parser.add_argument('-p', '--page', action='store_true', help='facebook page')
     argument_parser.add_argument('-l', '--login', action='store_true', help='apply facebook login, default is without login')
-    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')    
+    argument_parser.add_argument('-t', '--timeout', action='store', help='timeout for a site discover or an article update')
     argument_parser.add_argument('-nh', '--non-headless', action='store_true', help='browser in non-headless mode, default is headless')
     argument_parser.add_argument('-m', '--max', action='store', help='max amount of sites(by discover) or articles(by update) want to be accomplished, default is 2')
     argument_parser.add_argument('-c', '--cpu', action='store', help='how many cpu processes run at the same time, default is 2')
@@ -220,7 +225,7 @@ def main():
 
     action = None
     site_type = None
-    is_logined = DEFAULT_IS_LOGINED    
+    is_logined = DEFAULT_IS_LOGINED
     timeout = None
     is_headless = DEFAULT_IS_HEADLESS
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
@@ -265,13 +270,13 @@ def main():
         except Exception as e:
             helper.print_error(e)
             raise
-    
+
     if args.cpu:
         try:
             cpu = int(args.cpu)
         except Exception as e:
             helper.print_error(e)
-            raise 
+            raise
 
     if args.between:
         try:
@@ -303,7 +308,7 @@ def main():
 
     main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id, max_auto_times=max_auto_times, cpu=cpu)
     main_handler.handle()
-    
+
 
 if __name__ == '__main__':
     main()
