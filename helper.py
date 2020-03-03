@@ -21,7 +21,7 @@ class Helper:
         # - kill zombie processes
         kill_zombie_command = "\
             running_zid=$(ps aux | grep -w Z | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Chrome Window Session PID: $running_zid \
+            && echo Zombie Process PID: $running_zid \
             && kill $running_zid 2>&1 \
             && wait $running_zid \
         " 

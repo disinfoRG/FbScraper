@@ -25,9 +25,8 @@ from config import \
     DEFAULT_IS_HEADLESS, \
     DEFAULT_MAX_AMOUNT_OF_ITEMS, \
     DEFAULT_N_AMOUNT_IN_A_CHUNK, \
-    ITEM_PROCESS_COUNTDOWN_DESCRIPTION, \
-    TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
+    DEFAULT_BREAK_BETWEEN_PROCESS_RATIO, \
     DEFAULT_MAX_AUTO_TIMES, \
     DEFAULT_CPU
 
@@ -141,17 +140,20 @@ class Handler:
         print('---- [{}][process_item][pid={}] end'.format(helper.now(), pid))
         print(self.browsers)
 
-        break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS) if self.break_between_process is None else self.break_between_process
-        self.countdown(break_time, desc=TAKE_A_BREAK_COUNTDOWN_DESCRIPTION)
+        max_break_time = self.break_between_process*(1 + DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
+        min_break_time = self.break_between_process*(1 - DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
+        break_time = helper.random_int(max=max_break_time, min=min_break_time)
+        self.countdown(break_time)
 
         logfile.close()
 
         return response
 
-    def countdown(self, period, desc=ITEM_PROCESS_COUNTDOWN_DESCRIPTION):
-        print('desc={}, total={}'.format(desc, period))
+    def countdown(self, period):
+        print(f'[{helper.now()}][fb_handler - countdown] start to sleep for {period} seconds before next process_item')
         for i in range(period):
             helper.wait(1)
+        print(f'[{helper.now()}][fb_handler - countdown] sleep is done')
 
     def handle(self):
         items = []

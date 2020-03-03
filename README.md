@@ -136,7 +136,6 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
     - `PAGE_SITE_TYPE = 'fb_page'`
     - `DISCOVER_TIMEOUT = 60*60`
     - `UPDATE_TIMEOUT = 60*10`
-    - `UPDATE_CRAWLER_TIMEOUT = UPDATE_TIMEOUT - 60*1`
     - `DEFAULT_IS_LOGINED = False`
     - `DEFAULT_IS_HEADLESS = True`
     - `DEFAULT_MAX_AMOUNT_OF_ITEMS = 1`
