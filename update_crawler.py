@@ -2,32 +2,32 @@ from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
 import time
-from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
-
+from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
+from update_parser import UpdateParser
 
 class UpdateCrawler:
-    def __init__(self, url, article_id, browser, queries, logfile, max_try_times=3, is_logined=DEFAULT_IS_LOGINED, timeout=UPDATE_CRAWLER_TIMEOUT):
-        self.url = helper.get_clean_url(url)
-        self.article_id = article_id
+    def __init__(self, article_url, browser, parser, pipeline, logfile, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, is_logined=DEFAULT_IS_LOGINED):
+        self.article_url = helper.get_clean_url(article_url)
         self.browser = browser
         self.post_node = None
-        self.queries = queries
+        self.parser = parser
+        self.pipeline = pipeline
         self.logfile = logfile
         self.max_try_times = max_try_times
         self.is_logined = is_logined
         self.start_at = None
         self.timeout = timeout
-        self.should_load_comment = True
-        self.should_turn_off_comment_filter = True
+        self.should_load_comment = DEFAULT_SHOULD_LOAD_COMMENT
+        self.should_turn_off_comment_filter = DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 
     def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
-        self.logfile.write(timestamp)        
+        self.logfile and self.logfile.write(timestamp)        
 
-    def crawl_and_save(self):
+    def crawl(self):
         try:
             self.start_at = helper.now()
-            self.logfile.write('\n')
+            self.logfile and self.logfile.write('\n')
             self.enter_site()
             is_located = self.locate_target_post()
 
@@ -37,51 +37,25 @@ class UpdateCrawler:
                 selector = '.permalinkPost' if self.is_logined else '.userContentWrapper'
                 raise NoSuchElementException('[post_crawler] Cannot locate target post with selector={}'.format(selector))
 
-            raw_html = self.get_raw_html()
-            self.save_to_db(raw_html)
+            self.save()
             self.logfile.write(f'[INFO] Article {self.article_id} update successfully.')
 
         except Exception as e:
-            note = 'url={}, is_logined={}'.format(self.url, self.is_logined)
-            errMsg = helper.print_error(e, note)
-            self.logfile.write(f'[ERROR] updating article {self.article_id}: {errMsg}')
+            self.save()
+            note = 'url={}, is_logined={}'.format(self.article_url, self.is_logined)
+            helper.print_error(e, note)
             raise
 
-    def save_to_db(self, raw_html):
-        now = int(time.time())
-
-        # insert snapshot
-        snapshot = dict()
-        snapshot['snapshot_at'] = now
-        snapshot['raw_data'] = raw_html
-        snapshot['article_id'] = self.article_id
-        self.queries.insert_article_snapshot(snapshot)
-
-        # update article
-        article = dict()
-        original_article = self.queries.get_article_by_id(article_id=self.article_id)
-
-        article['article_id'] = self.article_id
-        article['last_snapshot_at'] = now
-        article['next_snapshot_at'] = now + 259200  # 3 days
-        article['snapshot_count'] = original_article['snapshot_count']+1
-        if original_article['first_snapshot_at'] == 0:
-            article['first_snapshot_at'] = now
-        else:
-            article['first_snapshot_at'] = original_article['first_snapshot_at']
-        self.queries.update_article(**article)
-
-    def get_raw_html(self):
-        # to get the "current" post node 
-        self.locate_target_post()
-
-        if self.post_node is not None:
-            return helper.get_html(self.post_node)
-        else:
-            return self.browser.page_source # failed for https://www.facebook.com/znk168/posts/412649276099554
+    def save(self):
+        raw_html = self.parser.get_post_raw_html(self.browser.page_source)
+        try:
+            self.pipeline and self.pipeline.update_article(raw_html)
+        except Exception as e:
+            helper.print_error(e)
+            raise
 
     def enter_site(self):
-        post_root_url = self.url
+        post_root_url = self.article_url
 
         try:
             self.browser.get(post_root_url)
@@ -96,10 +70,10 @@ class UpdateCrawler:
                 raise SelfDefinedError('Encountered security check requiring user to login')
 
             success_status = 'crawler_timestamp_{}: successful to enter site with url "{}"'.format(helper.now(), post_root_url)
-            self.logfile.write(success_status)
+            self.logfile and self.logfile.write(success_status)
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to enter site with url "{}", error is {}'.format(helper.now(), post_root_url, helper.print_error(e))
-            self.logfile.write(failed_status)
+            self.logfile and self.logfile.write(failed_status)
             raise
 
         if not self.is_logined:
@@ -107,7 +81,7 @@ class UpdateCrawler:
             try:
                 helper.remove_element_by_selector(block_selector, self.browser)
                 removed_block_text = 'crawler_timestamp_{}: removed block element for non-logined browsing with selector="{}" \n'.format(helper.now(), block_selector)
-                self.logfile.write(removed_block_text)
+                self.logfile and self.logfile.write(removed_block_text)
             except Exception as e:
                 helper.print_error(e, block_selector)
 
@@ -117,12 +91,12 @@ class UpdateCrawler:
         self.post_node = helper.get_element(self.browser, selector)
 
         if not self.post_node:
-            post_not_found = 'crawler_timestamp_{}: failed and article not found with selector "{}", article url is {} \n'.format(helper.now(), selector, self.url)
-            self.logfile.write(post_not_found)
+            post_not_found = 'crawler_timestamp_{}: failed and article not found with selector "{}", article url is {} \n'.format(helper.now(), selector, self.article_url)
+            self.logfile and self.logfile.write(post_not_found)
             return False
         else:
-            post_is_found = 'crawler_timestamp_{}: success and article is located with selector "{}", article url is {} \n'.format(helper.now(), selector, self.url)
-            self.logfile.write(post_is_found)
+            post_is_found = 'crawler_timestamp_{}: success and article is located with selector "{}", article url is {} \n'.format(helper.now(), selector, self.article_url)
+            self.logfile and self.logfile.write(post_is_found)
             return True
 
     def is_robot_check(self):
@@ -179,15 +153,15 @@ class UpdateCrawler:
         
         try:
             helper.click_with_move(filter_menu_link_selector, self.browser)
-            self.logfile.write('crawler_timestamp_{}: clicked comment filter button with selector="{}" \n'.format(helper.now(), filter_menu_link_selector))
+            self.logfile and self.logfile.write('crawler_timestamp_{}: clicked comment filter button with selector="{}" \n'.format(helper.now(), filter_menu_link_selector))
             helper.move_to_element_by_selector(filter_menu_selector, self.browser)
-            self.logfile.write('crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(helper.now(), filter_menu_selector))
+            self.logfile and self.logfile.write('crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(helper.now(), filter_menu_selector))
             helper.click_with_move(unfiltered_option_selector, self.browser)
-            self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(helper.now(), unfiltered_option_selector))
+            self.logfile and self.logfile.write('crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(helper.now(), unfiltered_option_selector))
         except Exception as e:
             selector = '{} and {}'.format(filter_menu_link_selector, unfiltered_option_selector)
             failed_status = 'crawler_timestamp_{}: failed to turn off comment filter with selector "{}", error is {} \n'.format(helper.now(), selector, helper.print_error(e))
-            self.logfile.write(failed_status)
+            self.logfile and self.logfile.write(failed_status)
         
     def load_comment(self, depth, clicked_max_times=50):
         comment_expander_selector = '[data-testid="UFI2CommentsPagerRenderer/pager_depth_{}"]'.format(depth)
@@ -223,16 +197,14 @@ class UpdateCrawler:
 
                 self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
                 helper.wait()
-                
+                            
         except Exception as e:
             failed_status = 'crawler_timestamp_{}: failed to load comment at depth level #{} with selector "{}", error is {} \n'.format(helper.now(), depth, comment_expander_selector, helper.print_error(e))
-            self.logfile.write(failed_status)
+            self.logfile and self.logfile.write(failed_status)
 
-def test_robot_check(url):
-    is_robot_url = re.match('.*/checkpoint.*', url)
-    if is_robot_url:
-        return True
-    return False    
+        crawled_time = helper.now() - self.start_at
+        time_status = '[{}][update_crawler.py - load_comment] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
+        print(time_status) 
 
 def main():
     # 12min = 12*60 = 720sec
@@ -242,8 +214,8 @@ def main():
     # article_url = 'https://www.facebook.com/todayreview88/posts/2283660345270675' # hundreds comments
     # article_url = 'https://www.facebook.com/eatnews/posts/488393351879106' # thounds shares
     # article_url = 'https://www.facebook.com/lovebakinglovehealthy/posts/1970662936284274' # no comments
-    article_url = 'https://www.facebook.com/fuqidao168/posts/2466415456951685' # non-existing article
-    # article_url = 'https://www.facebook.com/twherohan/posts/2461318357438647' # ten-thousands comments
+    # article_url = 'https://www.facebook.com/fuqidao168/posts/2466415456951685' # non-existing article
+    article_url = 'https://www.facebook.com/twherohan/posts/2461318357438647' # ten-thousands comments
     
     start_time = helper.now()
     print('[{}][main] Start'.format(start_time))
@@ -259,8 +231,11 @@ def main():
     fpath = 'test_post_crawler_{}.log'.format(helper.now())
     logfile = Logger(open(fpath, 'a', buffering=1))
 
-    with open('cannot-locate-post-node_NoSuchElementException.html', 'w') as html_file:
-        pc = PostCrawler(article_url, browser, html_file.write, logfile)
+    
+    # with open('cannot-locate-post-node_NoSuchElementException.html', 'w') as html_file:
+    with open('test-timeout.html', 'w') as html_file:
+        parser = UpdateParser()
+        pc = UpdateCrawler(article_url, browser, parser, html_file.write, logfile, timeout=10)
         pc.crawl()
 
     browser.quit()

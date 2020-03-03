@@ -6,6 +6,7 @@ cookies/
 chromedriver
 geckodriver
 __pycache__/
+.idea/*
 *.json
 *.ipynb
 *.error

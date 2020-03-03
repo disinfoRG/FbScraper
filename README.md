@@ -90,10 +90,7 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
 - xxx_handler.py
     - decide the target url list for spider to crawl and parse
     - decide how different spiders to work together
-## Scheduler (Now not used on Middle2)
-- scheduler.py
-    - decide how often or when to run which handler (aka. discover.py or update.py)
-## Spider (xxx now can be: page or post)
+## Spider (xxx now can be: discover or update)
 - xxx_spider.py
     - temporary center for all arguments later used to feed in crawler, parser, and pipeline
     - decide how crawler, parser, and pipeline work together
@@ -120,12 +117,8 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
         - write input with specified id from spider into database
     - note: may be used as a callback function in crawler, or a totally independent instance
 ## Database
-- db.py
+- queries
     - implement the details to CRUD with database
-- db_helper.py
-    - abstract common or repeating steps from db.py
-- db_manager.py
-    - encapsulated db.py for others to use
 ## Browser
 - facebook.py
     - based on webdriver and specialized for facebook
@@ -137,36 +130,37 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
 ## Configuration
 - config.py
     - configure default arguments
-        - `DISCOVER_ACTION = 'discover'`
-        - `UPDATE_ACTION = 'update'`
-        - `GROUP_SITE_TYPE = 'fb_public_group'`
-        - `PAGE_SITE_TYPE = 'fb_page'`
-        - `DISCOVER_TIMEOUT = 60*60`
-        - `UPDATE_TIMEOUT = 60*10`
-        - `UPDATE_CRAWLER_TIMEOUT = UPDATE_TIMEOUT - 60*1`
-        - `DEFAULT_IS_LOGINED = False`
-        - `DEFAULT_IS_HEADLESS = True`
-        - `DEFAULT_MAX_AMOUNT_OF_ITEMS = 1`
-        - `DEFAULT_N_AMOUNT_IN_A_CHUNK = 1`
-        - `ITEM_PROCESS_COUNTDOWN_DESCRIPTION = 'Item Process Countdown'`
-        - `TAKE_A_BREAK_COUNTDOWN_DESCRIPTION = 'Take A Break Countdown'`
-        - `DEFAULT_BREAK_BETWEEN_PROCESS = 60*2`
-        - `DEFAULT_MAX_AUTO_TIMES = 0`
+    - `DISCOVER_ACTION = 'discover'`
+    - `UPDATE_ACTION = 'update'`
+    - `GROUP_SITE_TYPE = 'fb_public_group'`
+    - `PAGE_SITE_TYPE = 'fb_page'`
+    - `DISCOVER_TIMEOUT = 60*60`
+    - `UPDATE_TIMEOUT = 60*10`
+    - `UPDATE_CRAWLER_TIMEOUT = UPDATE_TIMEOUT - 60*1`
+    - `DEFAULT_IS_LOGINED = False`
+    - `DEFAULT_IS_HEADLESS = True`
+    - `DEFAULT_MAX_AMOUNT_OF_ITEMS = 1`
+    - `DEFAULT_N_AMOUNT_IN_A_CHUNK = 1`
+    - `ITEM_PROCESS_COUNTDOWN_DESCRIPTION = 'Item Process Countdown'`
+    - `TAKE_A_BREAK_COUNTDOWN_DESCRIPTION = 'Take A Break Countdown'`
+    - `DEFAULT_BREAK_BETWEEN_PROCESS = 60*2`
+    - `DEFAULT_MAX_AUTO_TIMES = 0`
 - settings.py
     - configure required arguments for browser and database
-    - Email and password to login    
-    - Browser's executalbe binary
+    - `CHROMEDRIVER_BIN`: browser's executalbe binary path
+    - `DB_URL`: url to connect to database, ex. mysql+pymysql://root:mysecret@127.0.0.1:3306/FbScraping
+    - `AIRTABLE_API_KEY`: to update table Site in database
+    - `FB_EMAIL`: email to login facebook
+    - `FB_PASSWORD`: password to login facebook
 
 # File Relationship
 ## `python3 fb_hanlder.py --discover` related files
-- page_spider.py
-    - page_crawler.py
-    - page_parser.py
-        - page_parser_helper.py
-    - page_pipeline.py
+- discover_spider.py
+- discover_crawler.py
+- discover_parser.py
+- discover_pipeline.py
 ## `python3 fb_hanlder.py --update` related files
-- post_crawler.py
-    - post_crawler.py
-    - post_parser.py
-        - post_parser_helper.py
-    - post_pipeline.py
+- update_spider.py
+- update_crawler.py
+- update_parser.py
+- update_pipeline.py
