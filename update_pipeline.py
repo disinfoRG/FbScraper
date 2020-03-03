@@ -1,66 +1,54 @@
 import zlib
 from helper import helper
-
-STATUS_SUCCESS = 'SUCCESS'
-STATUS_FAILED = 'FAILED'
+from config import STATUS_SUCCESS, DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL
 
 class UpdatePipeline():
-    def __init__(self, article_id, db_manager, logfile, next_snapshot_at_interval=60*60*24*3):
-        self.db_manager = db_manager
+    def __init__(self, article_id, db, logfile, next_snapshot_at_interval=DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL):
+        self.db = db
         self.article_id = article_id
         self.snapshot_at = None
         self.next_snapshot_at_interval = next_snapshot_at_interval
         self.logfile = logfile
 
-    def log_pipeline(self, db_action, db_table, db_id, result, status):
-        timestamp = '[pipeline_timestamp_{}] status: {}, database action: {}, table: {}, id: {}, result: {} \n'.format(helper.now(), status, db_action, db_table, db_id, result)
+    def log_pipeline(self, result):
+        timestamp = '[{}] pipeline result: {} \n'.format(helper.now(), result)
         self.logfile and self.logfile.write(timestamp)   
 
-    def pipe_single_post_raw_data(self, raw_data):
+    def update_article(self, raw_data):
         self.snapshot_at = helper.now()
         self.snapshot_article(raw_data)
-        self.update_article()
+        self.refresh_article_snapshot_history()
 
     def snapshot_article(self, raw_data):
-        sa = {}
-        sa['snapshot_at'] = self.snapshot_at
-        sa['raw_data'] = raw_data
-        sa['article_id'] = self.article_id
+        snapshot = dict()
+        snapshot['snapshot_at'] = self.snapshot_at
+        snapshot['raw_data'] = raw_data
+        snapshot['article_id'] = self.article_id
+        self.db.insert_article_snapshot(snapshot)
+        self.log_pipeline(f'[{STATUS_SUCCESS}] insert ArticleSnapshot #{self.article_id}')
 
-        db_id = None
-        try:
-            db_id = self.db_manager.insert_article_snapshot(sa)
-            self.log_pipeline('insert', 'ArticleSnapshot', db_id, sa, STATUS_SUCCESS)
-        except Exception as e:
-            self.log_pipeline('insert', 'ArticleSnapshot', db_id, helper.print_error(e), STATUS_FAILED)
+    def refresh_article_snapshot_history(self):
+        article = dict()
+        original_article = self.db.get_article_by_id(article_id=self.article_id)
 
-    def update_article(self):
-        article_id = self.article_id
-
-        try:
-            p = {}
-            snapshot_at = self.snapshot_at
-            article = self.db_manager.get_article_by_id(article_id)
-
-            if article['first_snapshot_at'] == 0:
-                p['first_snapshot_at'] = snapshot_at
-            p['last_snapshot_at'] = snapshot_at
-            p['next_snapshot_at'] = snapshot_at + self.next_snapshot_at_interval
-            p['snapshot_count'] = article['snapshot_count'] + 1
-            p['article_id'] = article_id
-            
-            self.db_manager.update_article(p)
-            self.log_pipeline('update', 'Article', article_id, p, STATUS_SUCCESS)
-        except Exception as e:
-            self.log_pipeline('update', 'Article', article_id, helper.print_error(e), STATUS_FAILED)
+        article['article_id'] = self.article_id
+        article['last_snapshot_at'] = self.snapshot_at
+        article['next_snapshot_at'] = self.snapshot_at + self.next_snapshot_at_interval
+        article['snapshot_count'] = original_article['snapshot_count']+1
+        if original_article['first_snapshot_at'] == 0:
+            article['first_snapshot_at'] = self.snapshot_at
+        else:
+            article['first_snapshot_at'] = original_article['first_snapshot_at']
+        self.db.update_article(**article)        
+        self.log_pipeline(f'[{STATUS_SUCCESS}] update Article #{self.article_id} after ArticleSnapshot inserted')
 
 def main():
-    import db_manager
+    import db
     from logger import Logger
 
     fpath = 'test_post_pipeline_{}.log'.format(helper.now())
     logfile = Logger(open(fpath, 'a', buffering=1))
-    pipeline = UpdatePipeline([], 1426, db_manager, logfile)
+    pipeline = UpdatePipeline([], 1426, db, logfile)
     raw_data = 'sssaAAAAaaa'
     pipeline.pipe_single_post_raw_data(raw_data)
     print('pause')

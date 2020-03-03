@@ -1,45 +1,33 @@
 import zlib
 from helper import helper
-
+from config import STATUS_SUCCESS
 
 class DiscoverPipeline:
-    def __init__(self, post_urls, site_id, db_manager, logfile):
-        self.post_urls = post_urls
-        self.db_manager = db_manager
+    def __init__(self, site_id, db, logfile):
         self.site_id = site_id
+        self.db = db
         self.logfile = logfile
 
-    def pipe(self):
-        for p_url in self.post_urls:
-            if self.is_post_existed(p_url):
-                continue
-            self.write_post(p_url)
-
-    def is_post_existed(self, url):
-        # select count(*) from FBPostSnapshot where url=post['url']
-        return self.db_manager.is_article_existed('url_hash', zlib.crc32(url.encode()))
-
-    def log_pipeline(self, db_table, db_id, data):
-        timestamp = 'pipeline_timestamp_{}: insert to database, table = {}, id = {}, data = {} \n'.format(helper.now(), db_table, db_id, data)
+    def log_pipeline(self, result):
+        timestamp = '[{}] pipeline result: {} \n'.format(helper.now(), result)
         self.logfile.write(timestamp)
 
-    def write_post_url(self, url):
-        p = dict()
+    def insert_article(self, article_url):
+        article = dict()
 
-        p['first_snapshot_at'] = 0
-        p['last_snapshot_at'] = 0
-        p['next_snapshot_at'] = -1
-        p['snapshot_count'] = 0
-        p['url_hash'] = zlib.crc32(url.encode())
-        p['url'] = url
-        p['site_id'] = self.site_id
-        p['article_type'] = 'FBPost'
-        p['created_at'] = helper.now()
-        p['redirect_to'] = None
+        article['first_snapshot_at'] = 0
+        article['last_snapshot_at'] = 0
+        article['next_snapshot_at'] = -1
+        article['snapshot_count'] = 0
+        article['url_hash'] = zlib.crc32(article_url.encode())
+        article['url'] = article_url
+        article['site_id'] = self.site_id
+        article['article_type'] = 'FBPost'
+        article['created_at'] = helper.now()
+        article['redirect_to'] = None
 
-        db_id = self.db_manager.insert_article(p)
-        self.log_pipeline('Article', db_id, p)
-
+        article_id = self.db.insert_article(article)
+        self.log_pipeline(f'[{STATUS_SUCCESS}] insert Article #{article_id}')
 
 def main():
     import db_manager

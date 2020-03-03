@@ -1,11 +1,12 @@
 from helper import helper, SelfDefinedError
 from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
 import re
-from config import DEFAULT_IS_LOGINED, UPDATE_CRAWLER_TIMEOUT
+import time
+from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 from update_parser import UpdateParser
 
 class UpdateCrawler:
-    def __init__(self, article_url, browser, parser, pipeline, logfile, timeout, max_try_times=3, is_logined=DEFAULT_IS_LOGINED):
+    def __init__(self, article_url, browser, parser, pipeline, logfile, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, is_logined=DEFAULT_IS_LOGINED):
         self.article_url = helper.get_clean_url(article_url)
         self.browser = browser
         self.post_node = None
@@ -16,8 +17,8 @@ class UpdateCrawler:
         self.is_logined = is_logined
         self.start_at = None
         self.timeout = timeout
-        self.should_load_comment = True
-        self.should_turn_off_comment_filter = True
+        self.should_load_comment = DEFAULT_SHOULD_LOAD_COMMENT
+        self.should_turn_off_comment_filter = DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 
     def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
         timestamp = 'crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n'.format(helper.now(), depth, comment_loaders_total, clicked_count, empty_count)
@@ -37,6 +38,8 @@ class UpdateCrawler:
                 raise NoSuchElementException('[post_crawler] Cannot locate target post with selector={}'.format(selector))
 
             self.save()
+            self.logfile.write(f'[INFO] Article {self.article_id} update successfully.')
+
         except Exception as e:
             self.save()
             note = 'url={}, is_logined={}'.format(self.article_url, self.is_logined)
@@ -44,16 +47,12 @@ class UpdateCrawler:
             raise
 
     def save(self):
-        raw_html = self.get_raw_html()
+        raw_html = self.parser.get_post_raw_html(self.browser.page_source)
         try:
-            self.pipeline and self.pipeline.pipe_single_post_raw_data(raw_html)
+            self.pipeline and self.pipeline.update_article(raw_html)
         except Exception as e:
             helper.print_error(e)
             raise
-
-    def get_raw_html(self):
-        return self.parser.get_post_raw_html(self.browser.page_source)
-
 
     def enter_site(self):
         post_root_url = self.article_url
@@ -78,11 +77,6 @@ class UpdateCrawler:
             raise
 
         if not self.is_logined:
-            # window_block_selector = '#expanding_cta_close_button'
-            # try:        
-            #     helper.click_with_move(window_block_selector, self.browser)
-            # except Exception as e:
-            #     helper.print_error(e, window_block_selector)
             block_selector = '#headerArea'
             try:
                 helper.remove_element_by_selector(block_selector, self.browser)
@@ -210,13 +204,7 @@ class UpdateCrawler:
 
         crawled_time = helper.now() - self.start_at
         time_status = '[{}][update_crawler.py - load_comment] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
-        print(time_status)
-
-def test_robot_check(url):
-    is_robot_url = re.match('.*/checkpoint.*', url)
-    if is_robot_url:
-        return True
-    return False    
+        print(time_status) 
 
 def main():
     # 12min = 12*60 = 720sec

@@ -1,12 +1,11 @@
 from tqdm import tqdm
 import argparse
+import time
 import os
 import sys
+import pugsql
 import multiprocessing
 multiprocessing.set_start_method('spawn', True)
-from selenium.common.exceptions import NoSuchElementException
-import threading
-import random
 
 # self-defined
 from facebook import Facebook
@@ -15,7 +14,6 @@ from update_spider import UpdateSpider
 from discover_spider import DiscoverSpider
 from logger import Logger
 from helper import helper, SelfDefinedError
-import db_manager
 from config import \
     DISCOVER_ACTION, \
     UPDATE_ACTION, \
@@ -32,6 +30,10 @@ from config import \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
     DEFAULT_MAX_AUTO_TIMES, \
     DEFAULT_CPU
+
+db = pugsql.module('queries')
+db.connect(os.getenv('DB_URL'))
+
 class Handler:
     def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id, max_auto_times, cpu):
         self.action = action
@@ -50,15 +52,29 @@ class Handler:
     def update_one(self, article, browser, logfile, is_group_site_type, timeout):
         article_id = article['article_id']
         article_url = article['url']
-        spider = UpdateSpider(article_url, article_id, browser, logfile, timeout=timeout, is_logined=self.is_logined)
+        spider = UpdateSpider(article_url=article_url, 
+                                db=db,
+                                article_id=article_id, 
+                                browser=browser, 
+                                logfile=logfile, 
+                                timeout=timeout, 
+                                is_logined=self.is_logined)
         spider.work()
 
     def discover_one(self, site, browser, logfile, is_group_site_type, timeout, max_try_times=None):
         site_url = site['url']
         site_id = site['site_id']
-        existing_article_urls = db_manager.get_articles_by_site_id(site_id)
+        existing_article_urls = [x['url'] for x in db.get_article_urls_of_site(site_id=site_id)]
         should_use_original_url = is_group_site_type
-        spider = DiscoverSpider(site_url, site_id, browser, existing_article_urls, logfile, max_try_times, timeout=timeout, should_use_original_url=should_use_original_url)
+        spider = DiscoverSpider(site_url=site_url, 
+                                db=db,
+                                site_id=site_id, 
+                                browser=browser, 
+                                existing_article_urls=existing_article_urls, 
+                                logfile=logfile, 
+                                max_try_times=max_try_times, 
+                                timeout=timeout, 
+                                should_use_original_url=should_use_original_url)
         spider.work()
 
     def process_one(self, item, browser, logfile, timeout):
@@ -117,7 +133,7 @@ class Handler:
         spent = end_at - start_at
         print('[{}][process_item][pid={}] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, pid, spent, self.action, self.site_type, item))
         
-        response = {}
+        response = dict()
         response['errors'] = errors
         response['is_security_check'] = is_security_check
         response['url'] = item['url']
@@ -139,15 +155,19 @@ class Handler:
 
     def handle(self):
         items = []
-        get_items = None
 
         if self.action == UPDATE_ACTION:
-            get_items = db_manager.get_articles_need_to_update
+            items = db.get_articles_need_to_update(site_id=self.specific_site_id,
+                                                        now=int(time.time()),
+                                                        amount=self.max_amount_of_items)
         elif self.action == DISCOVER_ACTION:
-            get_items = db_manager.get_sites_need_to_discover
+            if self.specific_site_id:  # if given a site id
+                site = db.get_site_by_id(site_id=self.specific_site_id)
+                items = [site]
+            else:
+                items = db.get_sites_by_type(site_type=self.site_type,
+                                                amount=self.max_amount_of_items)
         
-        items = get_items(site_type=self.site_type, site_id=self.specific_site_id, amount=self.max_amount_of_items)
-        items_len = len(items)
         chunks = helper.divide_chunks(items, self.n_amount_in_a_chunk)
 
         for chunk_index, n_item in enumerate(chunks):
@@ -242,7 +262,7 @@ def main():
         action = UPDATE_ACTION
         timeout = UPDATE_TIMEOUT
     else:
-        return
+        raise Exception('Please specified valid action')
 
     if args.group:
         site_type = GROUP_SITE_TYPE

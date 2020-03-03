@@ -62,6 +62,11 @@ class Helper:
 
     # n = How many elements each list should have 
     def divide_chunks(self, l, n=10, as_tuple=False): 
+        import types
+        is_generator = isinstance(l, types.GeneratorType)
+        if is_generator:
+            l = list(l)
+
         # looping till length l 
         chunks = []
         for i in range(0, len(l), n):  

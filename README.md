@@ -19,14 +19,9 @@ replace <YOUR_EMAIL> and <YOUR_PASSWORD> to your facebook's email and password
 $ echo FB_EMAIL=<YOUR_EMAIL> >> .env
 $ echo FB_PASSWORD=<YOUR_PASSWORD> >> .env
 ```
-4. update database from NewsScraping (https://github.com/disinfoRG/NewsScraping/blob/master/README.md#running)
-
-Required instruction from README.md#running as below:
-Then update your site table.  You need an API key from Airtable generated [here](https://airtable.com/account).  Add `AIRTABLE_API_KEY=<your_api_key>` to `.env`, and then:
+4. Update your site table.  You need an API key from Airtable generated [here](https://airtable.com/account).  Add `AIRTABLE_API_KEY=<your_api_key>` to `.env`, and then:
 ```sh
-$ cd NewsScraping && pipenv install
-$ pipenv run alembic upgrade head
-$ SCRAPY_PROJECT=sitesAirtable pipenv run scrapy crawl updateSites
+$ pipenv run scrapy crawl updateSites
 ```
 5. discover new post urls for at most 100 different facebook pages using login email and password
 ```sh
@@ -122,12 +117,8 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
         - write input with specified id from spider into database
     - note: may be used as a callback function in crawler, or a totally independent instance
 ## Database
-- db.py
+- queries
     - implement the details to CRUD with database
-- db_helper.py
-    - abstract common or repeating steps from db.py
-- db_manager.py
-    - encapsulated db.py for others to use
 ## Browser
 - facebook.py
     - based on webdriver and specialized for facebook

@@ -1,14 +1,12 @@
 from helper import helper
-from bs4 import BeautifulSoup
-
-MAX_TRY_TIMES_DEFAULT = 3
+from config import DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_USE_ORIGINAL_URL
 
 class DiscoverCrawler:
-    def __init__(self, url, browser, existing_article_urls, parser, pipeline, logfile, timeout, max_try_times=MAX_TRY_TIMES_DEFAULT, should_use_original_url=False):
-        self.url = helper.get_clean_url(url)
+    def __init__(self, site_url, browser, existing_article_urls, parser, pipeline, logfile, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL):
+        self.site_url = helper.get_clean_url(site_url)
         self.browser = browser
         self.existing_article_urls = existing_article_urls
-        self.max_try_times = max_try_times if max_try_times else MAX_TRY_TIMES_DEFAULT
+        self.max_try_times = max_try_times if max_try_times else DEFAULT_MAX_TRY_TIMES
         self.parser = parser
         self.pipeline = pipeline
         self.logfile = logfile
@@ -20,10 +18,10 @@ class DiscoverCrawler:
         self.start_at = helper.now()
         self.logfile.write('\n')
         self.enter_site()
-        self.expand_post()
+        self.expand_page_and_insert_article()
 
     def enter_site(self):
-        post_root_url = self.url
+        post_root_url = self.site_url
         if not self.should_use_original_url:
             if post_root_url.endswith('/'):
                 post_root_url += 'posts'
@@ -32,22 +30,13 @@ class DiscoverCrawler:
         self.browser.get(post_root_url)
         helper.wait()
 
-    def log_crawler(self, viewed_count, new_count, existing_count, empty_count):
-        timestamp = 'crawler_timestamp_{}: viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n'.format(helper.now(), viewed_count, new_count, existing_count, empty_count)
-        self.logfile.write(timestamp)
-
-    def expand_post(self):
+    def expand_page_and_insert_article(self):
         viewed_count = 0
         new_count = 0
         empty_count = 0
 
         while (helper.now() - self.start_at) < self.timeout and empty_count < self.max_try_times:
             self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
-
-            # # check if browser is hanging or site is loaded to the end
-            # height_before, height_after = self.scroll()
-            # if height_after <= height_before:
-            #     break
             helper.scroll(self.browser)
             helper.wait()
 
@@ -64,14 +53,14 @@ class DiscoverCrawler:
             else:
                 for p_url in new_post_urls:
                     if p_url:
-                        self.pipeline.write_post_url(p_url)
+                        self.pipeline.insert_article(p_url)
 
                 # reset empty count check when new_count > 0
                 empty_count = 0
                 self.existing_article_urls += new_post_urls
 
         crawled_time = helper.now() - self.start_at
-        time_status = '[{}][discover_crawler.py - expand_post] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
+        time_status = '[{}][discover_crawler.py - expand_page_and_insert_article] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
         print(time_status)
     
     def remove_old_post_urls(self, post_urls):
@@ -80,12 +69,6 @@ class DiscoverCrawler:
     def get_post_urls(self):
         return self.parser.get_post_urls(self.browser.page_source)
 
-    def scroll(self):
-        height_before_scroll = self.browser.execute_script("return document.body.scrollHeight")
-        # scroll
-        self.browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        helper.wait(10)
-        # compare height to see if there's new element loaded
-        height_after_scroll = self.browser.execute_script("return document.body.scrollHeight")
-
-        return height_before_scroll, height_after_scroll
+    def log_crawler(self, viewed_count, new_count, existing_count, empty_count):
+        timestamp = '[{}] crawler viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n'.format(helper.now(), viewed_count, new_count, existing_count, empty_count)
+        self.logfile.write(timestamp)
