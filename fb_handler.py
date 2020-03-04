@@ -1,6 +1,5 @@
 from tqdm import tqdm
 import argparse
-import time
 import os
 import sys
 import pugsql
@@ -28,7 +27,8 @@ from config import \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
     DEFAULT_BREAK_BETWEEN_PROCESS_RATIO, \
     DEFAULT_MAX_AUTO_TIMES, \
-    DEFAULT_CPU
+    DEFAULT_CPU, \
+    DEFAULT_TIMEOUT_RATIO
 
 db = pugsql.module('queries')
 db.connect(os.getenv('DB_URL'))
@@ -85,6 +85,8 @@ class Handler:
             self.update_one(item, browser, logfile, is_group_site_type, timeout)
 
     def process_item(self, item):
+        self.pause_escape_security_check()
+
         errors = []
         pid = os.getpid()
         start_at = helper.now()
@@ -105,10 +107,17 @@ class Handler:
             if fb.driver is not None:
                 fb.driver.quit()
 
+        max_timeout = self.timeout*(1 + DEFAULT_TIMEOUT_RATIO)
+        min_timeout = self.timeout*(1 - DEFAULT_TIMEOUT_RATIO)
+        timeout = helper.random_int(max=max_timeout, min=min_timeout)
+
         error_note = 'process_status = {}, item = {}'.format(process_status, item)
         is_security_check = False
         try:
-            self.process_one(item, browser, logfile, self.timeout)
+            self.process_one(item=item, 
+                                browser=browser, 
+                                logfile=logfile, 
+                                timeout=timeout)
         except SelfDefinedError as e:
             # encountered security check for robot or login
             is_security_check = True
@@ -140,35 +149,37 @@ class Handler:
         print('---- [{}][process_item][pid={}] end'.format(helper.now(), pid))
         print(self.browsers)
 
-        max_break_time = self.break_between_process*(1 + DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
-        min_break_time = self.break_between_process*(1 - DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
-        break_time = helper.random_int(max=max_break_time, min=min_break_time)
-        self.countdown(break_time)
-
         logfile.close()
+        self.pause_escape_security_check()
 
         return response
 
-    def countdown(self, period):
-        print(f'[{helper.now()}][fb_handler - countdown] start to sleep for {period} seconds before next process_item')
-        for i in range(period):
+    def pause_escape_security_check(self):
+        max_break_time = self.break_between_process*0.5*(1 + DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
+        min_break_time = self.break_between_process*0.5*(1 - DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
+        break_time = helper.random_int(max=max_break_time, min=min_break_time)
+
+        print(f'[{helper.now()}][fb_handler - pause_escape_security_check] start to sleep for {break_time} seconds before next process_item')
+        for i in range(break_time):
             helper.wait(1)
-        print(f'[{helper.now()}][fb_handler - countdown] sleep is done')
+        print(f'[{helper.now()}][fb_handler - pause_escape_security_check] sleep is done')
 
     def handle(self):
         items = []
 
         if self.action == UPDATE_ACTION:
-            items = db.get_articles_need_to_update(site_id=self.specific_site_id,
-                                                        now=int(time.time()),
-                                                        amount=self.max_amount_of_items)
+            if self.specific_site_id:  # if given a site id
+                items = db.get_articles_outdated_by_site_id(site_id=self.specific_site_id,
+                                                    now=helper.now(),
+                                                    amount=self.max_amount_of_items)
+            else:
+                items = db.get_articles_outdated(now=helper.now(), amount=self.max_amount_of_items)
         elif self.action == DISCOVER_ACTION:
             if self.specific_site_id:  # if given a site id
                 site = db.get_site_by_id(site_id=self.specific_site_id)
                 items = [site]
             else:
-                items = db.get_sites_by_type(site_type=self.site_type,
-                                                amount=self.max_amount_of_items)
+                items = db.get_sites_by_type(site_type=self.site_type, amount=self.max_amount_of_items)
         
         chunks = helper.divide_chunks(items, self.n_amount_in_a_chunk)
 

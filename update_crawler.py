@@ -38,8 +38,8 @@ class UpdateCrawler:
                 raise NoSuchElementException('[post_crawler] Cannot locate target post with selector={}'.format(selector))
 
             self.save()
-            self.logfile.write(f'[INFO] Article {self.article_id} update successfully.')
-
+        except SelfDefinedError as e:
+            raise
         except Exception as e:
             self.save()
             note = 'url={}, is_logined={}'.format(self.article_url, self.is_logined)
