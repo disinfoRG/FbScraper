@@ -25,7 +25,6 @@ from config import \
     DEFAULT_MAX_AMOUNT_OF_ITEMS, \
     DEFAULT_N_AMOUNT_IN_A_CHUNK, \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
-    DEFAULT_BREAK_BETWEEN_PROCESS_RATIO, \
     DEFAULT_MAX_AUTO_TIMES, \
     DEFAULT_CPU, \
     DEFAULT_TIMEOUT_RATIO
@@ -85,7 +84,8 @@ class Handler:
             self.update_one(item, browser, logfile, is_group_site_type, timeout)
 
     def process_item(self, item):
-        self.pause_escape_security_check()
+        break_time = helper.random_int(max=self.break_between_process)
+        self.pause_escape_security_check(break_time)
 
         errors = []
         pid = os.getpid()
@@ -150,15 +150,11 @@ class Handler:
         print(self.browsers)
 
         logfile.close()
-        self.pause_escape_security_check()
+        self.pause_escape_security_check(self.break_between_process - break_time)
 
         return response
 
-    def pause_escape_security_check(self):
-        max_break_time = self.break_between_process*0.5*(1 + DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
-        min_break_time = self.break_between_process*0.5*(1 - DEFAULT_BREAK_BETWEEN_PROCESS_RATIO)
-        break_time = helper.random_int(max=max_break_time, min=min_break_time)
-
+    def pause_escape_security_check(self, break_time):
         print(f'[{helper.now()}][fb_handler - pause_escape_security_check] start to sleep for {break_time} seconds before next process_item')
         for i in range(break_time):
             helper.wait(1)
