@@ -17,42 +17,6 @@ class Helper:
     def __init__(self):
         return
 
-    def kill_zombie(self):
-        # - kill zombie processes
-        kill_zombie_command = "\
-            running_zid=$(ps aux | grep -w Z | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Zombie Process PID: $running_zid \
-            && kill $running_zid 2>&1 \
-            && wait $running_zid \
-        " 
-
-        # - kill all chrome window session 
-        kill_session_command = "\
-            running_sid=$(ps aux | grep 'Chrome' | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Chrome Window Session PID: $running_sid \
-            && kill $running_sid 2>&1 \
-            && wait $running_sid \
-        "
-
-        # - kill all webdriver
-        kill_webdriver_command = "\
-            running_wid=$(ps aux | grep 'chromedriver' | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Webdriver PID: $running_wid \
-            && kill $running_wid 2>&1 \
-            && wait $running_wid \
-        "
-        
-        os.system(kill_zombie_command)
-        os.system(kill_session_command)
-        os.system(kill_webdriver_command)        
-        helper.wait(5)        
-
-    def has_file(self, fpath):
-        try:
-            return os.path.exists(fpath)
-        except:
-            return False
-
     def to_tuples(self, list_of_dictionary_items):
         tuples = []
         for dictionary_item in list_of_dictionary_items:
@@ -96,14 +60,6 @@ class Helper:
             errMsg = "Exception: {}, note: {}".format(str(e), note)
             sys.stderr.write(errMsg)
             return e
-
-    def get_clean_url(self, url):
-        host_url = 'https://www.facebook.com/'
-        url_chunks = url.replace(host_url, '').split('?')
-        if url_chunks[0] == 'profile.php':
-            url.split('&')[0]
-        else:
-            return url.split('?')[0]
             
     def remove_element_by_selector(self, selector, driver):
         try:
@@ -122,7 +78,7 @@ class Helper:
             ActionChains(driver).move_to_element(node).perform()
         except Exception as e:
             self.print_error(e, selector)
-            raise            
+            raise
 
     def click_with_move(self, selector, driver, timeout=5, has_tried_count=0, should_offset=False):
         try:
@@ -190,31 +146,12 @@ class Helper:
             seconds = random.uniform(2, 3)
         time.sleep(seconds)
 
-    def data_testidify(self, selector):
-        return '[data-testid="{}"]'.format(selector)
-
-
-    def get_count(self, text):
-        try:
-            return int(re.findall('\d+', text)[0])
-        except:
-            return 0
-
-
-    def get_text(self, node):
-        try:
-            return node.get_attribute('innerText')
-        except:
-            return ''
-
-
     def get_html(self, node):
         try:
             return node.get_attribute('outerHTML')
         except Exception as e:
             self.print_error(e, node)
             return ''
-
 
     def get_element(self, node, selector):
         try:
@@ -233,17 +170,6 @@ class Helper:
         ele.clear()
         ele.send_keys(value)
         driver.implicitly_wait(1)
-
-    def strip(self, string):
-        """Helping function to remove all non alphanumeric characters"""
-        words = string.split()
-        words = [word for word in words if "#" not in word]
-        string = " ".join(words)
-        clean = ""
-        for c in string:
-            if str.isalnum(c) or (c in [" ", ".", ","]):
-                clean += c
-        return clean
 
     def scroll(self, driver, node=None):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
