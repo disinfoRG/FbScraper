@@ -13,27 +13,22 @@ class UpdateParser:
         self.soup = BeautifulSoup(raw_html, 'html.parser')
     
     def get_post_raw_html(self, page_source=None):
+        result = None
+
         if page_source:
             self.set_soup(page_source)
 
-        try:
-            selector = '.permalinkPost'
-            raw_html = str(self.soup.select(selector)[0])
-            return raw_html
-        except:
-            pass
+        if len(self.soup.select('.permalinkPost')) > 0:
+            result = str(self.soup.select('.permalinkPost')[0])
+        elif len(self.soup.select('.userContentWrapper')) > 0:
+            result = str(self.soup.select('.userContentWrapper')[0])
+        else:
+            # return whole page's html if cannot locate post node  
+            # ex. failed for non-existing article: https://www.facebook.com/fuqidao168/posts/2466415456951685
+            # ex. failed for some video post: https://www.facebook.com/znk168/posts/412649276099554        
+            result = page_source
 
-        try:
-            selector = '.userContentWrapper'
-            raw_html = str(self.soup.select(selector)[0])
-            return raw_html
-        except:
-            pass
-
-        # return whole page's html if cannot locate post node  
-        # ex. failed for non-existing article: https://www.facebook.com/fuqidao168/posts/2466415456951685
-        # ex. failed for some video post: https://www.facebook.com/znk168/posts/412649276099554        
-        return page_source
+        return result
 
 if __name__ == '__main__':
     from helper import helper

@@ -3,7 +3,7 @@ from config import DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_USE_ORIGINAL_URL
 
 class DiscoverCrawler:
     def __init__(self, site_url, browser, existing_article_urls, parser, pipeline, logfile, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL):
-        self.site_url = helper.get_clean_url(site_url)
+        self.site_url = site_url
         self.browser = browser
         self.existing_article_urls = existing_article_urls
         self.max_try_times = max_try_times if max_try_times else DEFAULT_MAX_TRY_TIMES
