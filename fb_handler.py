@@ -1,6 +1,19 @@
+import logging
+import os
+logging.basicConfig(
+    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("fb_handler.log", encoding="utf-8"),
+    ],
+)
+logger = logging.getLogger(__name__)
+
 from tqdm import tqdm
 import argparse
-import os
+import time
 import sys
 import pugsql
 import multiprocessing
@@ -11,7 +24,6 @@ from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from update_spider import UpdateSpider
 from discover_spider import DiscoverSpider
-from logger import Logger
 from helper import helper, SelfDefinedError
 from config import \
     DISCOVER_ACTION, \
@@ -47,41 +59,39 @@ class Handler:
         self.cpu = cpu
         self.browsers = []
 
-    def update_one(self, article, browser, logfile, is_group_site_type, timeout):
+    def update_one(self, article, browser, is_group_site_type, timeout):
         article_id = article['article_id']
         article_url = article['url']
-        spider = UpdateSpider(article_url=article_url, 
+        spider = UpdateSpider(article_url=article_url,
                                 db=db,
-                                article_id=article_id, 
-                                browser=browser, 
-                                logfile=logfile, 
-                                timeout=timeout, 
+                                article_id=article_id,
+                                browser=browser,
+                                timeout=timeout,
                                 is_logined=self.is_logined)
         spider.work()
 
-    def discover_one(self, site, browser, logfile, is_group_site_type, timeout, max_try_times=None):
+    def discover_one(self, site, browser, is_group_site_type, timeout, max_try_times=None):
         site_url = site['url']
         site_id = site['site_id']
         existing_article_urls = [x['url'] for x in db.get_article_urls_of_site(site_id=site_id)]
         should_use_original_url = is_group_site_type
-        spider = DiscoverSpider(site_url=site_url, 
+        spider = DiscoverSpider(site_url=site_url,
                                 db=db,
-                                site_id=site_id, 
-                                browser=browser, 
-                                existing_article_urls=existing_article_urls, 
-                                logfile=logfile, 
-                                max_try_times=max_try_times, 
-                                timeout=timeout, 
+                                site_id=site_id,
+                                browser=browser,
+                                existing_article_urls=existing_article_urls,
+                                max_try_times=max_try_times,
+                                timeout=timeout,
                                 should_use_original_url=should_use_original_url)
         spider.work()
 
-    def process_one(self, item, browser, logfile, timeout):
+    def process_one(self, item, browser, timeout):
         is_group_site_type = True if self.site_type == GROUP_SITE_TYPE else False
 
         if self.action == DISCOVER_ACTION:
-            self.discover_one(item, browser, logfile, is_group_site_type, timeout)
+            self.discover_one(item, browser, is_group_site_type, timeout)
         elif self.action == UPDATE_ACTION:
-            self.update_one(item, browser, logfile, is_group_site_type, timeout)
+            self.update_one(item, browser, is_group_site_type, timeout)
 
     def process_item(self, item):
         break_time = helper.random_int(max=self.break_between_process)
@@ -91,8 +101,7 @@ class Handler:
         pid = os.getpid()
         start_at = helper.now()
 
-        logfile = open('{}.log'.format(process_status), 'a', buffering=1)
-        print(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
+        logger.debug(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
         browser = None
@@ -111,28 +120,27 @@ class Handler:
         error_note = 'process_status = {}, item = {}'.format(process_status, item)
         is_security_check = False
         try:
-            self.process_one(item=item, 
-                                browser=browser, 
-                                logfile=logfile, 
+            self.process_one(item=item,
+                                browser=browser,
                                 timeout=timeout)
         except SelfDefinedError as e:
             # encountered security check for robot or login
             is_security_check = True
             error_msg = '[{}][process_item][pid={}] Encountered security check and failed to {}-{} for item, error: {} \n'.format(helper.now(), pid, self.action, self.site_type, helper.print_error(e, error_note))
             errors.append(error_msg)
-            print(error_msg)
+            logger.debug(error_msg)
         except Exception as e:
             error_msg = '[{}][process_item][pid={}] Failed to {}-{} for item, error: {} \n'.format(helper.now(), pid, self.action, self.site_type, helper.print_error(e, error_note))
             errors.append(error_msg)
-            print(error_msg)
-        
+            logger.debug(error_msg)
+
         try:
             browser.quit()
-            print('[{}][process_item][pid={}] Quit Browser, result is SUCCESS \n'.format(helper.now(), pid))
+            logger.debug('[{}][process_item][pid={}] Quit Browser, result is SUCCESS \n'.format(helper.now(), pid))
         except Exception as e:
             error_msg = '[{}][process_item][pid={}] Failed to Quit Browser, {} \n'.format(helper.now(), pid, helper.print_error(e, browser.current_url))
             errors.append(error_msg)
-            print(error_msg)
+            logger.debug(error_msg)
 
         response = dict()
         response['errors'] = errors
@@ -141,18 +149,17 @@ class Handler:
 
         end_at = helper.now()
         spent = end_at - start_at
-        print(f'[{end_at}][process_item][pid={pid}] -------- FINISH --------, spent: {spent}, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
+        logger.debug(f'[{end_at}][process_item][pid={pid}] -------- FINISH --------, spent: {spent}, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
-        logfile.close()
         self.pause_escape_security_check(self.break_between_process - break_time)
 
         return response
 
     def pause_escape_security_check(self, break_time):
-        print(f'[{helper.now()}][fb_handler - pause_escape_security_check] start to sleep for {break_time} seconds before next process_item')
+        logger.debug(f'[{helper.now()}][fb_handler - pause_escape_security_check] start to sleep for {break_time} seconds before next process_item')
         for i in range(break_time):
             helper.wait(1)
-        print(f'[{helper.now()}][fb_handler - pause_escape_security_check] sleep is done')
+        logger.debug(f'[{helper.now()}][fb_handler - pause_escape_security_check] sleep is done')
 
     def handle(self):
         items = []
@@ -170,13 +177,13 @@ class Handler:
                 items = [site]
             else:
                 items = db.get_sites_by_type(site_type=self.site_type, amount=self.max_amount_of_items)
-        
+
         chunks = helper.divide_chunks(items, self.n_amount_in_a_chunk)
 
         for chunk_index, n_item in enumerate(chunks):
             n_item_for_pool = helper.to_tuples(n_item)
             desc = '{} {} for {} items of chunk #{}'.format(self.action, self.site_type, len(n_item_for_pool), chunk_index)
-            print('------------------------------------ [{}] start {}'.format(helper.now(), desc))
+            logger.debug('------------------------------------ [{}] start {}'.format(helper.now(), desc))
 
             # maxtasksperchild=1 by https://stackoverflow.com/a/54975030
             pool = None
@@ -185,23 +192,23 @@ class Handler:
                 pool = multiprocessing.Pool(processes=self.cpu, maxtasksperchild=1)
                 pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
             except Exception as e:
-                helper.print_error(e, note)
+                logger.error(helper.print_error(e, note))
                 raise
 
-            print('---------------------------------------------------------------- wait for processes to finish and close')
+            logger.debug('---------------------------------------------------------------- wait for processes to finish and close')
             pool.close()
             pool.join()
             while True:
                 act = multiprocessing.active_children()
                 if len(act)==0:
                     break
-                print("----------- Waiting for %d workers to finish ----------- "%len(act))
+                logger.debug("----------- Waiting for %d workers to finish ----------- "%len(act))
                 helper.wait(1)
-            print('---------------------------------------------------------------- all processes are closed')
+            logger.debug('---------------------------------------------------------------- all processes are closed')
 
-            print('---------------------------------------------------------------- get processes result')
+            logger.debug('---------------------------------------------------------------- get processes result')
             n_item_result = pool_result.get()
-            print(n_item_result)
+            logger.debug(n_item_result)
             try:
                 # check if facebook block
                 for a_item_result in n_item_result:
@@ -210,23 +217,23 @@ class Handler:
                     if a_item_result['is_security_check']:
                         is_failed = True
                         msg = '[{}][handle] Encountered security check in details: {}. \n'.format(helper.now(), a_item_result)
-                        print(msg)
+                        logger.debug(msg)
 
                     if len(a_item_result['errors']) > 0:
                         msg = '[{}][handle] Encountered errors in details: {}. \n'.format(helper.now(), a_item_result)
-                        print(msg)
+                        logger.debug(msg)
 
                     if is_failed:
                         if self.max_auto_times > 0:
                             self.max_auto_times -= 1
-                            self.is_logined = not self.is_logined                            
+                            self.is_logined = not self.is_logined
                         else:
                             return
             except Exception as e:
-                helper.print_error(e)
+                logger.error(helper.print_error(e))
                 raise
 
-            print('------------------------------------ [{}] end {}'.format(helper.now(), desc))
+            logger.debug('------------------------------------ [{}] end {}'.format(helper.now(), desc))
 
 def main():
     argument_parser = argparse.ArgumentParser()
@@ -281,7 +288,7 @@ def main():
         try:
             timeout = int(args.timeout)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.non_headless:
@@ -291,43 +298,43 @@ def main():
         try:
             max_amount_of_items = int(args.max)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.cpu:
         try:
             cpu = int(args.cpu)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.between:
         try:
             break_between_process = int(args.between)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.site:
         try:
             specific_site_id = int(args.site)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.auto:
         try:
             max_auto_times = int(args.auto)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.chunk_size:
         try:
             n_amount_in_a_chunk = int(args.chunk_size)
         except Exception as e:
-            helper.print_error(e)
-            raise 
+            logger.error(helper.print_error(e))
+            raise
 
     main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id, max_auto_times=max_auto_times, cpu=cpu)
     main_handler.handle()

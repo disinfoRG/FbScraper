@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import os
 import json
 from selenium import webdriver
@@ -86,7 +88,7 @@ class Facebook:
                         self.driver.add_cookie(cookie)
                 self.driver.get(self.entrance_url)
 
-        
+
     def login_with_account(self):
         print(' -----  login_with_account')
         self.min_reload_get(self.entrance_url)
@@ -123,7 +125,7 @@ class Facebook:
                 self.min_reload_get(self.tmp_url)
 
             return session
-        except NoSuchWindowException:            
+        except NoSuchWindowException:
             # no such window: window was already closed
             # running webdriver(chromedriver, foxdriver) exists and session file exists, but caused by the browser window (not program, aka Chrome, Firefox) of the session file was closed, and get message like "chrome not reachable"
             pass
@@ -135,11 +137,11 @@ class Facebook:
             # Connection refused
             # casued session file exists, but running webdriver(chromedriver, foxdriver) is not found
             pass
-        
+
         # create a new browser instead of using the previous
         if self.has_session():
             os.remove(self.session_path)
-        
+
         tried_count += 1
         return self.configure_browser(browser_type, is_headless, executable_path, reuse_session_id, should_use_remote_webdriver, tried_count)
 
@@ -185,7 +187,7 @@ class Facebook:
                 self.driver = webdriver.Firefox(executable_path=executable_path, options=options)
             else:
                 self.driver = webdriver.Firefox(options=options)
-        
+
         if should_use_remote_webdriver:
             # save browser's info for reusage
             executor_url = self.driver.command_executor._url
@@ -200,12 +202,12 @@ class Facebook:
 
         if self.has_session():
             with open(self.session_path, 'r', encoding='utf-8') as f:
-                session = json.loads(f.read())        
+                session = json.loads(f.read())
                 executor_url = session['executor_url']
                 session_id = session['session_id']
                 print('executor_url: {}'.format(executor_url))
                 print('session_id: {}'.format(session_id))
-                print(" ----- previous browser's session loaded")        
+                print(" ----- previous browser's session loaded")
                 result = session
 
         return result
@@ -228,7 +230,7 @@ class Facebook:
     def attach_to_session(self):
         session = self.get_session()
         self.driver = self.create_driver_with_session(session)
-    
+
     @classmethod
     def create_driver_with_session(self, session):
         executor_url = session['executor_url']
@@ -255,7 +257,7 @@ class Facebook:
             # Replace the patched function with original function
             RemoteWebDriver.execute = org_command_execute
         except NoSuchWindowException:
-            helper.print_error(e)        
+            logger.error(helper.print_error(e))
             # try another way, which will create a new dummy window
             new_driver = webdriver.Remote(command_executor=executor_url, desired_capabilities={})
             new_driver.session_id = session_id

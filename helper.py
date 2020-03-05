@@ -24,24 +24,24 @@ class Helper:
             tuples.append(t)
         return tuples
 
-    # n = How many elements each list should have 
-    def divide_chunks(self, l, n=10, as_tuple=False): 
+    # n = How many elements each list should have
+    def divide_chunks(self, l, n=10, as_tuple=False):
         import types
         is_generator = isinstance(l, types.GeneratorType)
         if is_generator:
             l = list(l)
 
-        # looping till length l 
+        # looping till length l
         chunks = []
-        for i in range(0, len(l), n):  
+        for i in range(0, len(l), n):
             c = None
             if not as_tuple:
-                c = l[i:i + n] 
+                c = l[i:i + n]
             else:
                 c = tuple(l[i:i + n])
             chunks.append(c)
         return chunks
-                
+
 
     def print_error(self, e, note=None):
         try:
@@ -54,14 +54,12 @@ class Helper:
             funcName = lastCallStack[2] #取得發生的函數名稱
             exceptionType = type(e)
             errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}, note: {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail, note)
-            sys.stderr.write(errMsg)
             return errMsg
         except:
             # sometimes cannot get exceptionType from 3rd party class
             errMsg = "Exception: {}, note: {}".format(str(e), note)
-            sys.stderr.write(errMsg)
             return e
-            
+
     def remove_element_by_selector(self, selector, driver):
         try:
             expected_condition = 'presence_of_element_located' #'visibility_of_element_located'
@@ -100,7 +98,7 @@ class Helper:
         except ElementClickInterceptedException as e:
             # target is blocked by other element
             self.print_error(e, selector)
-            raise            
+            raise
         except MoveTargetOutOfBoundsException as e:
             # Webpage unavailable for any mouse interaction
             # Thrown when the target provided to the ActionsChains move() method is invalid, i.e. out of document.
@@ -126,7 +124,7 @@ class Helper:
         except ElementClickInterceptedException as e:
             # target is blocked by other element
             self.print_error(e, selector)
-            raise            
+            raise
         except MoveTargetOutOfBoundsException as e:
             # Webpage unavailable for any mouse interaction
             # Thrown when the target provided to the ActionsChains move() method is invalid, i.e. out of document.
@@ -154,7 +152,7 @@ class Helper:
         except ElementClickInterceptedException as e:
             # target is blocked by other element
             self.print_error(e, selector)
-            raise            
+            raise
         except MoveTargetOutOfBoundsException as e:
             # Webpage unavailable for any mouse interaction
             # Thrown when the target provided to the ActionsChains move() method is invalid, i.e. out of document.
@@ -277,7 +275,7 @@ class Helper:
         url_info['permalink'] = get_permalink(url_info)
         url_info['type'] = post_info['type']
         url_info['original_url'] = url
-        
+
         return url_info
 helper = Helper()
 
