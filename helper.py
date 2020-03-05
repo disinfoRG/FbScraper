@@ -17,42 +17,6 @@ class Helper:
     def __init__(self):
         return
 
-    def kill_zombie(self):
-        # - kill zombie processes
-        kill_zombie_command = "\
-            running_zid=$(ps aux | grep -w Z | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Chrome Window Session PID: $running_zid \
-            && kill $running_zid 2>&1 \
-            && wait $running_zid \
-        "
-
-        # - kill all chrome window session
-        kill_session_command = "\
-            running_sid=$(ps aux | grep 'Chrome' | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Chrome Window Session PID: $running_sid \
-            && kill $running_sid 2>&1 \
-            && wait $running_sid \
-        "
-
-        # - kill all webdriver
-        kill_webdriver_command = "\
-            running_wid=$(ps aux | grep 'chromedriver' | grep -v grep | awk '{print $2}' ORS=' ') \
-            && echo Webdriver PID: $running_wid \
-            && kill $running_wid 2>&1 \
-            && wait $running_wid \
-        "
-
-        os.system(kill_zombie_command)
-        os.system(kill_session_command)
-        os.system(kill_webdriver_command)
-        helper.wait(5)
-
-    def has_file(self, fpath):
-        try:
-            return os.path.exists(fpath)
-        except:
-            return False
-
     def to_tuples(self, list_of_dictionary_items):
         tuples = []
         for dictionary_item in list_of_dictionary_items:
@@ -92,16 +56,9 @@ class Helper:
             errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}, note: {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail, note)
             return errMsg
         except:
+            # sometimes cannot get exceptionType from 3rd party class
             errMsg = "Exception: {}, note: {}".format(str(e), note)
             return e
-
-    def get_clean_url(self, url):
-        host_url = 'https://www.facebook.com/'
-        url_chunks = url.replace(host_url, '').split('?')
-        if url_chunks[0] == 'profile.php':
-            url.split('&')[0]
-        else:
-            return url.split('?')[0]
 
     def remove_element_by_selector(self, selector, driver):
         try:
@@ -111,6 +68,7 @@ class Helper:
                 script = "document.querySelector('{}').remove()".format(selector)
                 driver.execute_script(script)
         except Exception as e:
+            # print selector because default error will not show
             self.print_error(e, selector)
             raise
 
@@ -119,63 +77,93 @@ class Helper:
             node = self.wait_element_by_selector(selector, driver)
             ActionChains(driver).move_to_element(node).perform()
         except Exception as e:
+            # print selector because default error will not show
             self.print_error(e, selector)
             raise
 
-    def click_with_move(self, selector, driver, timeout=5, has_tried_count=0, should_offset=False):
+    def click_with_move(self, selector, driver, timeout=5, should_offset=False):
+        result = None
+
         try:
             node = self.wait_element_by_selector(selector, driver, 'element_to_be_clickable', timeout)
             ActionChains(driver).move_to_element(node).perform()
             if should_offset:
                 self.scroll_more(driver)
-            ActionChains(driver).click(node).perform()
-            # node.click()
-            return True
+            ActionChains(driver).click(node).perform() # or node.click()
+            result = True
         except StaleElementReferenceException as e:
+            # The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
             self.print_error(e, selector)
+            result = False
+        except ElementClickInterceptedException as e:
+            # target is blocked by other element
+            self.print_error(e, selector)
+            raise
         except MoveTargetOutOfBoundsException as e:
+            # Webpage unavailable for any mouse interaction
+            # Thrown when the target provided to the ActionsChains move() method is invalid, i.e. out of document.
             self.print_error(e, selector)
             raise
         except Exception as e:
+            # print selector because default error will not show
             self.print_error(e, selector)
             raise
-        return False
-        # has_tried_count += 1
-        # if has_tried_count >= 2:
-        #     return False
-        # return self.click_without_move(selector, driver, timeout, has_tried_count)
+        return result
 
-    def click_without_move(self, selector, driver, timeout=5, has_tried_count=0):
+    def click_without_move(self, selector, driver, timeout=5):
+        result = None
+
         try:
             ele = self.wait_element_by_selector(selector, driver, 'element_to_be_clickable', timeout)
             ele.click()
-            return True
+            result = True
         except StaleElementReferenceException as e:
+            # The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
             self.print_error(e, selector)
+            result = False
         except ElementClickInterceptedException as e:
-            self.print_error(e, selector)
-        except Exception as e:
+            # target is blocked by other element
             self.print_error(e, selector)
             raise
-        return False
-        # has_tried_count += 1
-        # if has_tried_count >= 2:
-        #     return False
-        # return self.click_with_move(selector, driver, timeout, has_tried_count)
+        except MoveTargetOutOfBoundsException as e:
+            # Webpage unavailable for any mouse interaction
+            # Thrown when the target provided to the ActionsChains move() method is invalid, i.e. out of document.
+            self.print_error(e, selector)
+            raise
+        except Exception as e:
+            # print selector because default error will not show
+            self.print_error(e, selector)
+            raise
+        return result
 
     def click(self, node, driver, should_offset=False):
+        result = None
+
         try:
             ActionChains(driver).move_to_element(node).perform()
             if should_offset:
                 self.scroll_more(driver)
             ActionChains(driver).click(node).perform()
+            result = True
+        except StaleElementReferenceException as e:
+            # The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
+            self.print_error(e, selector)
+            result = False
+        except ElementClickInterceptedException as e:
+            # target is blocked by other element
+            self.print_error(e, selector)
+            raise
         except MoveTargetOutOfBoundsException as e:
-            self.print_error(e)
+            # Webpage unavailable for any mouse interaction
+            # Thrown when the target provided to the ActionsChains move() method is invalid, i.e. out of document.
+            self.print_error(e, selector)
             raise
         except Exception as e:
-            self.print_error(e)
-            return False
-        return True
+            # print selector because default error will not show
+            self.print_error(e, selector)
+            raise
+
+        return result
 
     def now(self):
         return int(datetime.now().timestamp())
@@ -188,38 +176,17 @@ class Helper:
             seconds = random.uniform(2, 3)
         time.sleep(seconds)
 
-    def data_testidify(self, selector):
-        return '[data-testid="{}"]'.format(selector)
-
-
-    def get_count(self, text):
-        try:
-            return int(re.findall('\d+', text)[0])
-        except:
-            return 0
-
-
-    def get_text(self, node):
-        try:
-            return node.get_attribute('innerText')
-        except:
-            return ''
-
-
     def get_html(self, node):
-        try:
-            return node.get_attribute('outerHTML')
-        except Exception as e:
-            self.print_error(e, node)
-            return ''
-
+        return node and node.get_attribute('outerHTML')
 
     def get_element(self, node, selector):
-        try:
-            return node.find_element_by_css_selector(selector)
-        except:
-            return None
+        result = None
+        elements = node.find_elements_by_css_selector(selector)
 
+        if len(elements) > 0:
+            result = elements[0]
+
+        return result
 
     def wait_element_by_selector(self, selector, driver, expected_condition='presence_of_element_located', timeout=5):
         wait = WebDriverWait(driver, timeout=timeout)
@@ -232,17 +199,6 @@ class Helper:
         ele.send_keys(value)
         driver.implicitly_wait(1)
 
-    def strip(self, string):
-        """Helping function to remove all non alphanumeric characters"""
-        words = string.split()
-        words = [word for word in words if "#" not in word]
-        string = " ".join(words)
-        clean = ""
-        for c in string:
-            if str.isalnum(c) or (c in [" ", ".", ","]):
-                clean += c
-        return clean
-
     def scroll(self, driver, node=None):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         if node:
@@ -254,60 +210,50 @@ class Helper:
 
     def get_facebook_url_info(self, url):
         def get_post_id_and_type(_url):
+            result = None
             # post
             # https://www.facebook.com/gushi.tw/posts/2497783880459937?__xts__%5B0%5D=68.ARDbW5UsQAib2f6AhUSWlUd14puN0S3wDD0lu_HWiKphufxnWorDIS6auvPx2XP5IF4WYa6E9Io1Xh54QKrzasCfyz-YIhfjbsvn2fgKtdTj9pueZWA2rwcqP3lfojWzsbP3L7UIdF6QPwSunxcFXgfqDBWXGZGi0USmENBzljNwiAhXokTqCegr1c43ybrmHgTokEiEbeWCvQuG1TnR2HBfodeOKXhqO_v4N5jr9VFUq3X4xl2goQ90NesQloptFubcudH3XmdWEnvggbff8TjEEpEtFBqE7tEAqfYAjBs5vqekgZKFrrrU9ZYWo33LZqLi6d0&__tn__=-R0.g
-            try:
-                return { 'id': re.findall('\/posts\/(\w+)', _url)[0], 'type': 'post' }
-            except Exception as e:
-                pass
-
+            if len(re.findall('\/posts\/(\w+)', _url)) > 0:
+                result = { 'id': re.findall('\/posts\/(\w+)', _url)[0], 'type': 'post' }
             # video
             # https://www.facebook.com/Wackyboys.Fans/videos/2452717014996864/?__xts__%5B0%5D=68.ARAvj4VDiok00FyWYH8Z6-CfMUuiKKlRIBfwnU6PmNEgcdDgBwP064gXAvQrk749Lk-G-eKK5cMLvuTvQtC3o3Q49y3btN7JDOb8CrsjxJB5FMNk7RPpmukw4N4HMmw94t3hH8_jmELHgcvd5YiHXFQcnvJ6OEqECZq_iL6ObarfUDnoUVAfo1SfVJzGg_ucWX5XzXFIkoCEjcEVs-zNOh4Vm4wtjngaKFyCvEvdh4C44l9DU5PHbHY0Z1WbGmoPvMA-zc5g8KqxfVXFMCNoab5FJ5zT9pWETZb9OVfe9wkWYBDXdsIVyhgMTiSdlfnIv_7ntDuyyepTzK7M&__tn__=-R
-            try:
-                return { 'id': re.findall('\/videos\/(\w+)', _url)[0], 'type': 'video' }
-            except Exception as e:
-                pass
-
+            elif len(re.findall('\/videos\/(\w+)', _url)) > 0:
+                result = { 'id': re.findall('\/videos\/(\w+)', _url)[0], 'type': 'video' }
             # photo
             # https://www.facebook.com/121570255108696/photos/a.123441864921535/539538693311848/?type=3&__xts__%5B0%5D=68.ARA6rYVIdTFoURfgtAk7MYP31YGVtprQD3XebhVwZrQJsFLn9p8IrndnWNqM20mN8uI4qJMJIlccHtAaPX3RfJWq73MaykNjGwTTuSEl48j8SDJ-sQtDzwhC7z5LRrWvtN4tdS1_4hZRXaRUxjgP7u6Vs-N8C7eRkwKBzZJ6jS16M1bru4QiXc3NlBHnx1QgrDMpsb7xVr5eZuZoaqVRisFkDMRymGkkmoZ_xbSUZXXTz-jhJQ2SSGeHHyMFl5eQqpVZYexFkylhdwSL4LBXZyQC1vCc6b7MGZ3dXz08OsSebylqdxNUFlTZgg4hpiktqCWc8UAkqXl7YzVxndTX2E8&__tn__=-R
-            try:
-                return { 'id': re.findall('\/photos\/.*\/(\w+)', _url)[0], 'type': 'photo' }
-            except Exception as e:
-                pass
-
+            elif len(re.findall('\/photos\/.*\/(\w+)', _url)) > 0:
+                result = { 'id': re.findall('\/photos\/.*\/(\w+)', _url)[0], 'type': 'photo' }
             # story_fbid
             # https://www.facebook.com/permalink.php?story_fbid=636096237164329&id=185537762220181&__xts__%5B0%5D=68.ARDXxSWoo2rCRDwjx5S1lYqEcEfvBMn1UTxm5NhakAusCUlvWei7dO7PwFhzAiit3Whq7RrG5MT7R2dgrTVfZ1fZSK3bOF5VzuM5SzsV5c0O1QKfCEVEcnnH7_auDpVO6vAhUQqyWl1tpc87-S2r18n0tY3hHFgKo5jt3Bt-stjPxqUYnpgrvj_Olu0bhuoE7Lfu28jonlluTpEmqjmoI2l5RXDsdHiyCpgarTpO-VosE6UiYHQYlkWlCpjVrSk5EL1cddjfs_suqFtKzhI4zd607DOsUCEbnJqxrjN5JWU_g-tWE2O0bTUh4tTeQTIt3OrvuM1IFzUNNaX6UsLuZImCiPJ7pvO4XACaF8o7h1w9xzpT-NYlc2ux9Klk-JDjAaZJyfUBYGGkMxXnZouXovKMgbk_vqt1tm0Hh_kVSKKjfI6HXkB_osuy26i3gW85HTifiFZCd2vIk-pNIk7JL59b6LI0DjvRztbMNUhhQDnlf3IGrIY&__tn__=-R
             # https://www.facebook.com/permalink.php?story_fbid=539530269979357&id=121570255108696
-            try:
-                return { 'id': re.findall('story_fbid\=(\d+?)\D', _url)[0], 'type': 'story_fbid' }
-            except Exception as e:
-                self.print_error(e)
-                return None
+            elif len(re.findall('story_fbid\=(\d+?)\D', _url)) > 0:
+                result = { 'id': re.findall('story_fbid\=(\d+?)\D', _url)[0], 'type': 'story_fbid' }
+            return result
+
         def parse_common_type(_url, _type):
+            result = None
             # for normal post, video, photo
-            try:
-                u = _url if _url.endswith('/') else _url+'/'
-                r = 'facebook.com\/(.*?)\/'
+            u = _url if _url.endswith('/') else _url+'/'
+            r = 'facebook.com\/(.*?)\/'
+            m = re.findall(r, u)
+
+            if len(m) == 0:
+                if u.startswith('/'):
+                    r = '\/(.+?)\/{}s'.format(_type)
+                else:
+                    r = '(.+?)\/{}s'.format(_type)
                 m = re.findall(r, u)
+                if len(m) > 0:
+                    result = m[0]
+            return result
 
-                if len(m) == 0:
-                    if u.startswith('/'):
-                        r = '\/(.+?)\/{}s'.format(_type)
-                    else:
-                        r = '(.+?)\/{}s'.format(_type)
-                    m = re.findall(r, u)
-
-                return m[0]
-            except Exception as e:
-                self.print_error(e)
-                return None
         def parse_story_fbid(_url, _type):
+            result = None
             # for story_fbid (aka. https://www.facebook.com/permalink.php?story_fbid=636095870497699&id=185537762220181&__xts__%5B0%5D=68.ARCf_eRqNCjMHCrF1FpzArZumj35pO8phq9MYa8nTLqK9QsoboTD-EOTPFn_mFHto8H7O5ZJbcpGOek-9fi3s_TmxAuuai9GL1vBvNFnYp9niSdU3oDKRrt-HoYoogWDMbUcSt07miwVMcKiscOErEhQxNw4C8bN_pTJB-F_dRQwT1vjOApIZdAgUtlvJ_PxKcLrQa6ZuYCr_MVMdr2j2tlHXXe1bYOdYy-PlxJFdkwS4xyeJbZI6s16EuQ7Ityyz8j7rHoFgj028kQi0ckU77ioWVqbvbqrMRzfEVRmWUGepvI-Wj0sMcFo2XvuZjhUSH7C666eyLP3LetXW1wRQmYqBP2RNGnpawPtt8IgSc8dTmn64XNZw3Q91Rb9kC-9ZabNRTuzUuB4Mec9ANoOVoafbQVC5Yj-ATIac0BJ4dsSFO2KAzHNuVirEpkNb2UmaTxBX4noPXN2Yw3pjF4X-hiWlJrkwQRhI9uFmDHKGzP1ncHeuy_dDQ&__tn__=-R)
-            try:
-                return re.findall('\Wid\=(\d+)', _url)[0]
-            except Exception as e:
-                self.print_error(e)
-                return None
+            if len(re.findall('\Wid\=(\d+)', _url)) > 0:
+                result = re.findall('\Wid\=(\d+)', _url)[0]
+            return result
+
         def get_permalink(_url_info):
             # all types of post can accessed by https://www.facebook.com/{page_id}/posts/{post_id}
             return 'https://www.facebook.com/{page_id}/posts/{post_id}'.format(**_url_info)

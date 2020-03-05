@@ -36,11 +36,10 @@ from config import \
     DEFAULT_IS_HEADLESS, \
     DEFAULT_MAX_AMOUNT_OF_ITEMS, \
     DEFAULT_N_AMOUNT_IN_A_CHUNK, \
-    ITEM_PROCESS_COUNTDOWN_DESCRIPTION, \
-    TAKE_A_BREAK_COUNTDOWN_DESCRIPTION, \
     DEFAULT_BREAK_BETWEEN_PROCESS, \
     DEFAULT_MAX_AUTO_TIMES, \
-    DEFAULT_CPU
+    DEFAULT_CPU, \
+    DEFAULT_TIMEOUT_RATIO
 
 db = pugsql.module('queries')
 db.connect(os.getenv('DB_URL'))
@@ -95,14 +94,14 @@ class Handler:
             self.update_one(item, browser, is_group_site_type, timeout)
 
     def process_item(self, item):
+        break_time = helper.random_int(max=self.break_between_process)
+        self.pause_escape_security_check(break_time)
+
         errors = []
         pid = os.getpid()
         start_at = helper.now()
 
-        process_status = '{}-{}-{}_pid_{}_timestamp_{}'.format(self.action, self.site_type, self.timeout, pid, start_at)
-        logger.debug('---- [{}][process_item][pid={}] start, status: {}, item: {}, browsers: {}'.format(helper.now(), pid, process_status, item, self.browsers))
-
-        logger.debug('[{}][process_item][pid={}] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, pid, self.action, self.site_type, item))
+        logger.debug(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
         browser = None
@@ -114,10 +113,16 @@ class Handler:
             if fb.driver is not None:
                 fb.driver.quit()
 
+        max_timeout = self.timeout*(1 + DEFAULT_TIMEOUT_RATIO)
+        min_timeout = self.timeout*(1 - DEFAULT_TIMEOUT_RATIO)
+        timeout = helper.random_int(max=max_timeout, min=min_timeout)
+
         error_note = 'process_status = {}, item = {}'.format(process_status, item)
         is_security_check = False
         try:
-            self.process_one(item, browser, self.timeout)
+            self.process_one(item=item,
+                                browser=browser,
+                                timeout=timeout)
         except SelfDefinedError as e:
             # encountered security check for robot or login
             is_security_check = True
@@ -137,42 +142,41 @@ class Handler:
             errors.append(error_msg)
             logger.debug(error_msg)
 
-        end_at = helper.now()
-        spent = end_at - start_at
-        logger.debug('[{}][process_item][pid={}] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, pid, spent, self.action, self.site_type, item))
-
         response = dict()
         response['errors'] = errors
         response['is_security_check'] = is_security_check
-        response['url'] = item['url']
+        response['item'] = item
 
-        logger.debug('---- [{}][process_item][pid={}] end'.format(helper.now(), pid))
-        logger.debug(self.browsers)
+        end_at = helper.now()
+        spent = end_at - start_at
+        logger.debug(f'[{end_at}][process_item][pid={pid}] -------- FINISH --------, spent: {spent}, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
-        break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS) if self.break_between_process is None else self.break_between_process
-        self.countdown(break_time, desc=TAKE_A_BREAK_COUNTDOWN_DESCRIPTION)
+        self.pause_escape_security_check(self.break_between_process - break_time)
 
         return response
 
-    def countdown(self, period, desc=ITEM_PROCESS_COUNTDOWN_DESCRIPTION):
-        logger.debug('desc={}, total={}'.format(desc, period))
-        for i in range(period):
+    def pause_escape_security_check(self, break_time):
+        logger.debug(f'[{helper.now()}][fb_handler - pause_escape_security_check] start to sleep for {break_time} seconds before next process_item')
+        for i in range(break_time):
             helper.wait(1)
+        logger.debug(f'[{helper.now()}][fb_handler - pause_escape_security_check] sleep is done')
 
     def handle(self):
         items = []
 
         if self.action == UPDATE_ACTION:
-            items = db.get_articles_need_to_update(site_id=self.specific_site_id,
-                                                        now=int(time.time()),
-                                                        amount=self.max_amount_of_items)
+            if self.specific_site_id:  # if given a site id
+                items = db.get_articles_outdated_by_site_id(site_id=self.specific_site_id,
+                                                    now=helper.now(),
+                                                    amount=self.max_amount_of_items)
+            else:
+                items = db.get_articles_outdated(now=helper.now(), amount=self.max_amount_of_items)
         elif self.action == DISCOVER_ACTION:
             if self.specific_site_id:  # if given a site id
                 site = db.get_site_by_id(site_id=self.specific_site_id)
                 items = [site]
             else:
-                items = db.get_sites_by_type(site_type=self.site_type,
-                                                amount=self.max_amount_of_items)
+                items = db.get_sites_by_type(site_type=self.site_type, amount=self.max_amount_of_items)
 
         chunks = helper.divide_chunks(items, self.n_amount_in_a_chunk)
 
@@ -188,7 +192,7 @@ class Handler:
                 pool = multiprocessing.Pool(processes=self.cpu, maxtasksperchild=1)
                 pool_result = pool.starmap_async(self.process_item, n_item_for_pool)
             except Exception as e:
-                helper.print_error(e, note)
+                logger.error(helper.print_error(e, note))
                 raise
 
             logger.debug('---------------------------------------------------------------- wait for processes to finish and close')
@@ -226,7 +230,7 @@ class Handler:
                         else:
                             return
             except Exception as e:
-                helper.print_error(e)
+                logger.error(helper.print_error(e))
                 raise
 
             logger.debug('------------------------------------ [{}] end {}'.format(helper.now(), desc))
@@ -256,7 +260,7 @@ def main():
     is_headless = DEFAULT_IS_HEADLESS
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
     cpu = DEFAULT_CPU
-    break_between_process = None
+    break_between_process = DEFAULT_BREAK_BETWEEN_PROCESS
     specific_site_id = None
     max_auto_times = DEFAULT_MAX_AUTO_TIMES
     n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK
@@ -284,7 +288,7 @@ def main():
         try:
             timeout = int(args.timeout)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.non_headless:
@@ -294,42 +298,42 @@ def main():
         try:
             max_amount_of_items = int(args.max)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.cpu:
         try:
             cpu = int(args.cpu)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.between:
         try:
             break_between_process = int(args.between)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.site:
         try:
             specific_site_id = int(args.site)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.auto:
         try:
             max_auto_times = int(args.auto)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     if args.chunk_size:
         try:
             n_amount_in_a_chunk = int(args.chunk_size)
         except Exception as e:
-            helper.print_error(e)
+            logger.error(helper.print_error(e))
             raise
 
     main_handler = Handler(action, site_type, is_logined=is_logined, timeout=timeout, is_headless=is_headless, max_amount_of_items=max_amount_of_items, n_amount_in_a_chunk=n_amount_in_a_chunk, break_between_process=break_between_process, specific_site_id=specific_site_id, max_auto_times=max_auto_times, cpu=cpu)
