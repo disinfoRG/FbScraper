@@ -1,16 +1,17 @@
+import logging
+logger = logging.getLogger(__name__)
 import zlib
 from helper import helper
 from config import STATUS_SUCCESS
 
 class DiscoverPipeline:
-    def __init__(self, site_id, db, logfile):
+    def __init__(self, site_id, db):
         self.site_id = site_id
         self.db = db
-        self.logfile = logfile
 
     def log_pipeline(self, result):
         timestamp = '[{}] pipeline result: {} \n'.format(helper.now(), result)
-        self.logfile.write(timestamp)
+        logger.debug(timestamp)
 
     def insert_article(self, article_url):
         article = dict()
@@ -34,12 +35,4 @@ def main():
     parsed = ['https://www.facebook.com/watchout.tw/posts/1469132613244947', 'https://www.facebook.com/watchout.tw/posts/1469027029922172']
     pipeline = DiscoverPipeline(parsed, 75, db_manager)
     pipeline.pipe()
-    print('pause')
-
-
-if __name__ == "__main__":
-    main()
-
-        
- 
-
+    logger.debug('pause')

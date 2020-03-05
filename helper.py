@@ -24,9 +24,9 @@ class Helper:
             && echo Chrome Window Session PID: $running_zid \
             && kill $running_zid 2>&1 \
             && wait $running_zid \
-        " 
+        "
 
-        # - kill all chrome window session 
+        # - kill all chrome window session
         kill_session_command = "\
             running_sid=$(ps aux | grep 'Chrome' | grep -v grep | awk '{print $2}' ORS=' ') \
             && echo Chrome Window Session PID: $running_sid \
@@ -41,11 +41,11 @@ class Helper:
             && kill $running_wid 2>&1 \
             && wait $running_wid \
         "
-        
+
         os.system(kill_zombie_command)
         os.system(kill_session_command)
-        os.system(kill_webdriver_command)        
-        helper.wait(5)        
+        os.system(kill_webdriver_command)
+        helper.wait(5)
 
     def has_file(self, fpath):
         try:
@@ -60,24 +60,24 @@ class Helper:
             tuples.append(t)
         return tuples
 
-    # n = How many elements each list should have 
-    def divide_chunks(self, l, n=10, as_tuple=False): 
+    # n = How many elements each list should have
+    def divide_chunks(self, l, n=10, as_tuple=False):
         import types
         is_generator = isinstance(l, types.GeneratorType)
         if is_generator:
             l = list(l)
 
-        # looping till length l 
+        # looping till length l
         chunks = []
-        for i in range(0, len(l), n):  
+        for i in range(0, len(l), n):
             c = None
             if not as_tuple:
-                c = l[i:i + n] 
+                c = l[i:i + n]
             else:
                 c = tuple(l[i:i + n])
             chunks.append(c)
         return chunks
-                
+
 
     def print_error(self, e, note=None):
         try:
@@ -90,11 +90,9 @@ class Helper:
             funcName = lastCallStack[2] #取得發生的函數名稱
             exceptionType = type(e)
             errMsg = "Exception of type {} occurred in file \"{}\", line {}, in {}: [{}] {}, note: {}".format(exceptionType, fileName, lineNum, funcName, error_class, detail, note)
-            sys.stderr.write(errMsg)
             return errMsg
         except:
             errMsg = "Exception: {}, note: {}".format(str(e), note)
-            sys.stderr.write(errMsg)
             return e
 
     def get_clean_url(self, url):
@@ -104,7 +102,7 @@ class Helper:
             url.split('&')[0]
         else:
             return url.split('?')[0]
-            
+
     def remove_element_by_selector(self, selector, driver):
         try:
             expected_condition = 'presence_of_element_located' #'visibility_of_element_located'
@@ -122,7 +120,7 @@ class Helper:
             ActionChains(driver).move_to_element(node).perform()
         except Exception as e:
             self.print_error(e, selector)
-            raise            
+            raise
 
     def click_with_move(self, selector, driver, timeout=5, has_tried_count=0, should_offset=False):
         try:
@@ -154,7 +152,7 @@ class Helper:
             return True
         except StaleElementReferenceException as e:
             self.print_error(e, selector)
-        except ElementClickInterceptedException as e:    
+        except ElementClickInterceptedException as e:
             self.print_error(e, selector)
         except Exception as e:
             self.print_error(e, selector)
@@ -268,7 +266,7 @@ class Helper:
             try:
                 return { 'id': re.findall('\/videos\/(\w+)', _url)[0], 'type': 'video' }
             except Exception as e:
-                pass        
+                pass
 
             # photo
             # https://www.facebook.com/121570255108696/photos/a.123441864921535/539538693311848/?type=3&__xts__%5B0%5D=68.ARA6rYVIdTFoURfgtAk7MYP31YGVtprQD3XebhVwZrQJsFLn9p8IrndnWNqM20mN8uI4qJMJIlccHtAaPX3RfJWq73MaykNjGwTTuSEl48j8SDJ-sQtDzwhC7z5LRrWvtN4tdS1_4hZRXaRUxjgP7u6Vs-N8C7eRkwKBzZJ6jS16M1bru4QiXc3NlBHnx1QgrDMpsb7xVr5eZuZoaqVRisFkDMRymGkkmoZ_xbSUZXXTz-jhJQ2SSGeHHyMFl5eQqpVZYexFkylhdwSL4LBXZyQC1vCc6b7MGZ3dXz08OsSebylqdxNUFlTZgg4hpiktqCWc8UAkqXl7YzVxndTX2E8&__tn__=-R
@@ -331,7 +329,7 @@ class Helper:
         url_info['permalink'] = get_permalink(url_info)
         url_info['type'] = post_info['type']
         url_info['original_url'] = url
-        
+
         return url_info
 helper = Helper()
 
