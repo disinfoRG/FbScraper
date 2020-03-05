@@ -91,7 +91,7 @@ class Handler:
         pid = os.getpid()
         start_at = helper.now()
 
-        logfile = open('{}.log'.format(process_status), 'a', buffering=1)
+        logfile = open(f'{start_at}_{pid}.log', 'a', buffering=1)
         print(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
@@ -108,7 +108,7 @@ class Handler:
         min_timeout = self.timeout*(1 - DEFAULT_TIMEOUT_RATIO)
         timeout = helper.random_int(max=max_timeout, min=min_timeout)
 
-        error_note = 'process_status = {}, item = {}'.format(process_status, item)
+        error_note = f'[{start_at}][process_item][pid={pid}], item = {item}'
         is_security_check = False
         try:
             self.process_one(item=item, 
