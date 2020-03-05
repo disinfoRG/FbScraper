@@ -1,9 +1,10 @@
 from helper import helper, SelfDefinedError
-from selenium.common.exceptions import NoSuchElementException, MoveTargetOutOfBoundsException
+from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
 import re
 import time
 from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 from update_parser import UpdateParser
+selenium.common.exceptions.
 
 class UpdateCrawler:
     def __init__(self, article_url, browser, parser, pipeline, logfile, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, is_logined=DEFAULT_IS_LOGINED):
@@ -31,14 +32,25 @@ class UpdateCrawler:
 
         is_located = self.locate_target_post()
         should_relocate_for_loaded_comment = None
+
         if is_located:
             try:
                 self.expand_comment()
                 should_relocate_for_loaded_comment = True
-            except Exception as e:
+                
+            except TimeoutException as e:
+                # encountered LIVE video post: https://www.facebook.com/hsiweiC/posts/160025454961889
+                # with this kind of message: [TimeoutException] , note: .userContentWrapper [data-testid="UFI2CommentsCount/root"]
+                # normal video post is fine: https://www.facebook.com/hsiweiC/posts/173291537422199
+                print('[post_crawler] maybe failed to expand comment for LIVE video')
                 should_relocate_for_loaded_comment = False
+                pass
+
+            except Exception as e:
                 # continue to save() without comment
                 # sometimes failed to expand comment due to random slow browser condition
+                print('[post_crawler] failed to expand comment for unkown reason')
+                should_relocate_for_loaded_comment = False
                 pass
         else:
             should_relocate_for_loaded_comment = False
