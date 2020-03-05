@@ -1,15 +1,12 @@
 import logging
 logger = logging.getLogger(__name__)
-from helper import helper, SelfDefinedError
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
 import re
+from helper import helper, SelfDefinedError
 from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, \
     DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
-from fbscraper.actions.update.update_parser import UpdateParser
-from fbscraper.actions.update.update_pipeline import UpdatePipeline
-
-parser = UpdateParser()
-pipeline = UpdatePipeline()
+import fbscraper.actions.update.update_parser as parser
+import fbscraper.actions.update.update_pipeline as pipeline
 
 
 class UpdateCrawler:

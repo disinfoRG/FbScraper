@@ -1,12 +1,9 @@
 import logging
 logger = logging.getLogger(__name__)
 from helper import helper
-from fbscraper.actions.discover.discover_pipeline import DiscoverPipeline
-from fbscraper.actions.discover.discover_parser import DiscoverParser
+import fbscraper.actions.discover.discover_pipeline as pipeline
+import fbscraper.actions.discover.discover_parser as parser
 from config import DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_USE_ORIGINAL_URL
-
-parser = DiscoverParser()
-pipeline = DiscoverPipeline()
 
 
 class DiscoverCrawler:
