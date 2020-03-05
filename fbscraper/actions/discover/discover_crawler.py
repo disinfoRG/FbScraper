@@ -1,16 +1,24 @@
 import logging
 logger = logging.getLogger(__name__)
 from helper import helper
+from fbscraper.actions.discover.discover_pipeline import DiscoverPipeline
+from fbscraper.actions.discover.discover_parser import DiscoverParser
 from config import DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_USE_ORIGINAL_URL
 
+parser = DiscoverParser()
+pipeline = DiscoverPipeline()
+
+
 class DiscoverCrawler:
-    def __init__(self, site_url, browser, existing_article_urls, parser, pipeline, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL):
+    def __init__(self, site_url, site_id, browser, existing_article_urls, db, timeout,
+                 max_try_times=DEFAULT_MAX_TRY_TIMES,
+                 should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL):
         self.site_url = site_url
+        self.site_id = site_id
         self.browser = browser
         self.existing_article_urls = existing_article_urls
         self.max_try_times = max_try_times if max_try_times else DEFAULT_MAX_TRY_TIMES
-        self.parser = parser
-        self.pipeline = pipeline
+        self.db = db
         self.should_use_original_url = should_use_original_url
         self.timeout = timeout
         self.start_at = None
@@ -53,7 +61,7 @@ class DiscoverCrawler:
             else:
                 for p_url in new_post_urls:
                     if p_url:
-                        self.pipeline.insert_article(p_url)
+                        pipeline.insert_article(self.db, self.site_id, p_url)
 
                 # reset empty count check when new_count > 0
                 empty_count = 0
@@ -67,8 +75,10 @@ class DiscoverCrawler:
         return list(set(post_urls) - set(self.existing_article_urls))
 
     def get_post_urls(self):
-        return self.parser.get_post_urls(self.browser.page_source)
+        return parser.get_post_urls(self.browser.page_source)
 
     def log_crawler(self, viewed_count, new_count, existing_count, empty_count):
         timestamp = '[{}] crawler viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n'.format(helper.now(), viewed_count, new_count, existing_count, empty_count)
         logger.debug(timestamp)
+
+

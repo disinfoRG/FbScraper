@@ -1,27 +1,15 @@
 from bs4 import BeautifulSoup
-import time
-import re
-from random import uniform
 
 
 class UpdateParser:
-    def __init__(self, raw_html=None):
-        if raw_html:
-            self.set_soup(raw_html)
+    @staticmethod
+    def get_post_raw_html(page_source):
+        soup = BeautifulSoup(page_source, 'html.parser')
 
-    def set_soup(self, raw_html):
-        self.soup = BeautifulSoup(raw_html, 'html.parser')
-
-    def get_post_raw_html(self, page_source=None):
-        result = None
-
-        if page_source:
-            self.set_soup(page_source)
-
-        if len(self.soup.select('.permalinkPost')) > 0:
-            result = str(self.soup.select('.permalinkPost')[0])
-        elif len(self.soup.select('.userContentWrapper')) > 0:
-            result = str(self.soup.select('.userContentWrapper')[0])
+        if len(soup.select('.permalinkPost')) > 0:
+            result = str(soup.select('.permalinkPost')[0])
+        elif len(soup.select('.userContentWrapper')) > 0:
+            result = str(soup.select('.userContentWrapper')[0])
         else:
             # return whole page's html if cannot locate post node
             # ex. failed for non-existing article: https://www.facebook.com/fuqidao168/posts/2466415456951685
@@ -29,6 +17,7 @@ class UpdateParser:
             result = page_source
 
         return result
+
 
 if __name__ == '__main__':
     from helper import helper

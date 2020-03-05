@@ -1,25 +1,20 @@
 from bs4 import BeautifulSoup
-import re
 from helper import helper
 
+
 class DiscoverParser:
-    def __init__(self, raw_html=None):
-        if raw_html:
-            self.set_soup(raw_html)
+    def __init__(self):
+        pass
 
-    def set_soup(self, raw_html):
-        self.soup = BeautifulSoup(raw_html, 'html.parser')
-
-    def get_post_urls(self, raw_html=None):
-        if raw_html:
-            self.set_soup(raw_html)
-        post_elements = self.soup.find_all('div', {'class': 'userContentWrapper'})
+    def get_post_urls(self, raw_html):
+        soup = BeautifulSoup(raw_html, 'html.parser')
+        post_elements = soup.find_all('div', {'class': 'userContentWrapper'})
         return [self.get_post_url(post) for post in post_elements]
 
-    def get_post_url(self, post):
+    @staticmethod
+    def get_post_url(post):
         result = None
         anchors = post.select('[data-testid="story-subtitle"] a')
-        url_info = None
         for index, anchor in enumerate(anchors):
             hasTimestamp = len(anchor.select('abbr > span.timestampContent')) > 0
 
@@ -35,20 +30,18 @@ class DiscoverParser:
             
         return result
 
+
 def main():
     import json
 
-    page = None
     fname = 'site_74_posts_5_snapshotAt_1578891269.json'
     with open(fname,'r') as f:
         page = json.load(f)
 
-    ppa = DiscoverParser(page['raw_html'])
-    parsed = ppa.parse()
-    return parsed
+    ppa = DiscoverParser()
+    post_urls = ppa.get_post_urls(page['raw_html'])
+    return post_urls
+
 
 if __name__ == "__main__":
     main()
-
-        
- 

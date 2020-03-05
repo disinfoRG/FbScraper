@@ -11,10 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from tqdm import tqdm
 import argparse
-import time
-import sys
 import pugsql
 import multiprocessing
 multiprocessing.set_start_method('spawn', True)
@@ -22,8 +19,8 @@ multiprocessing.set_start_method('spawn', True)
 # self-defined
 from facebook import Facebook
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-from update_spider import UpdateSpider
-from discover_spider import DiscoverSpider
+from fbscraper.actions.update.update_spider import UpdateSpider
+from fbscraper.actions.discover.discover_spider import DiscoverSpider
 from helper import helper, SelfDefinedError
 from config import \
     DISCOVER_ACTION, \
@@ -43,6 +40,7 @@ from config import \
 
 db = pugsql.module('queries')
 db.connect(os.getenv('DB_URL'))
+
 
 class Handler:
     def __init__(self, action, site_type, is_logined, timeout, is_headless, max_amount_of_items, n_amount_in_a_chunk, break_between_process, specific_site_id, max_auto_times, cpu):
