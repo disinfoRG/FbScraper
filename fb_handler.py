@@ -91,11 +91,8 @@ class Handler:
         pid = os.getpid()
         start_at = helper.now()
 
-        process_status = '{}-{}-{}_pid_{}_timestamp_{}'.format(self.action, self.site_type, self.timeout, pid, start_at)
-        print('---- [{}][process_item][pid={}] start, status: {}, item: {}, browsers: {}'.format(helper.now(), pid, process_status, item, self.browsers))
-
         logfile = open('{}.log'.format(process_status), 'a', buffering=1)
-        print('[{}][process_item][pid={}] -------- LAUNCH --------, {}-{} for item: {} \n'.format(start_at, pid, self.action, self.site_type, item))
+        print(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
         fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
         browser = None
@@ -137,17 +134,14 @@ class Handler:
             errors.append(error_msg)
             print(error_msg)
 
-        end_at = helper.now()
-        spent = end_at - start_at
-        print('[{}][process_item][pid={}] -------- FINISH --------, spent: {}, {}-{} for item: {} \n'.format(end_at, pid, spent, self.action, self.site_type, item))
-        
         response = dict()
         response['errors'] = errors
         response['is_security_check'] = is_security_check
-        response['url'] = item['url']
+        response['item'] = item
 
-        print('---- [{}][process_item][pid={}] end'.format(helper.now(), pid))
-        print(self.browsers)
+        end_at = helper.now()
+        spent = end_at - start_at
+        print(f'[{end_at}][process_item][pid={pid}] -------- FINISH --------, spent: {spent}, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
 
         logfile.close()
         self.pause_escape_security_check(self.break_between_process - break_time)
@@ -259,7 +253,7 @@ def main():
     is_headless = DEFAULT_IS_HEADLESS
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
     cpu = DEFAULT_CPU
-    break_between_process = None
+    break_between_process = DEFAULT_BREAK_BETWEEN_PROCESS
     specific_site_id = None
     max_auto_times = DEFAULT_MAX_AUTO_TIMES
     n_amount_in_a_chunk = DEFAULT_N_AMOUNT_IN_A_CHUNK

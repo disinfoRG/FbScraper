@@ -17,24 +17,23 @@ class DiscoverParser:
         return [self.get_post_url(post) for post in post_elements]
 
     def get_post_url(self, post):
+        result = None
         anchors = post.select('[data-testid="story-subtitle"] a')
         url_info = None
         for index, anchor in enumerate(anchors):
-            try:
-                hasTimestamp = anchor.select('abbr > span.timestampContent')
+            hasTimestamp = len(anchor.select('abbr > span.timestampContent')) > 0
 
-                if (hasTimestamp):
-                    url = anchor.get('href')
+            if (hasTimestamp):
+                url = anchor.get('href')
+                if url:
                     url_info = helper.get_facebook_url_info(url)
-                    if url_info['permalink'] is not None:
-                        return url_info['permalink']
-                    elif url_info['original_url'] is not None:
-                        return url_info['original_url']
-                    pass
-            except:
-                pass
+                    if url_info['permalink']:
+                        result = url_info['permalink']
+                        break
+                    elif url_info['original_url']:
+                        result = url_info['original_url']
             
-        return None
+        return result
 
 def main():
     import json
