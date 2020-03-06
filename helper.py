@@ -92,7 +92,8 @@ class Helper:
             ActionChains(driver).click(node).perform() # or node.click()
             result = True
         except StaleElementReferenceException as e:
-            # The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
+            # [StaleElementReferenceException] stale element reference: element is not attached to the page document
+            # actually click still work, The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
             self.print_error(e, selector)
             result = False
         except ElementClickInterceptedException as e:
@@ -118,7 +119,8 @@ class Helper:
             ele.click()
             result = True
         except StaleElementReferenceException as e:
-            # The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
+            # [StaleElementReferenceException] stale element reference: element is not attached to the page document
+            # actually click still work, The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
             self.print_error(e, selector)
             result = False
         except ElementClickInterceptedException as e:
@@ -146,7 +148,8 @@ class Helper:
             ActionChains(driver).click(node).perform()
             result = True
         except StaleElementReferenceException as e:
-            # The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
+            # [StaleElementReferenceException] stale element reference: element is not attached to the page document
+            # actually click still work, The element may have been removed and re-added to the screen, since it was located. Such as an element being relocated. This can happen typically with a javascript framework when values are updated and the node is rebuilt.
             self.print_error(e, selector)
             result = False
         except ElementClickInterceptedException as e:

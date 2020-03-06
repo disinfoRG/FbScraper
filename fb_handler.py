@@ -20,7 +20,7 @@ import multiprocessing
 multiprocessing.set_start_method('spawn', True)
 
 # self-defined
-from facebook import Facebook
+import facebook as fb
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from update_spider import UpdateSpider
 from discover_spider import DiscoverSpider
@@ -57,7 +57,6 @@ class Handler:
         self.specific_site_id = specific_site_id
         self.max_auto_times = max_auto_times
         self.cpu = cpu
-        self.browsers = []
 
     def update_one(self, article, browser, is_group_site_type, timeout):
         article_id = article['article_id']
@@ -101,17 +100,22 @@ class Handler:
         pid = os.getpid()
         start_at = helper.now()
 
-        logger.debug(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
+        logger.debug(f'[{start_at}][process_item][pid={pid}] -------- LAUNCH --------, {self.action}-{self.site_type} for item: {item} \n')
 
-        fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, self.is_headless)
+        # fb = Facebook(FB_EMAIL, FB_PASSWORD, 'Chrome', CHROMEDRIVER_BIN, )
         browser = None
         try:
-            fb.start(self.is_logined)
-            browser = fb.driver
-            self.browsers.append(browser)
+            browser = fb.create_driver_without_session(browser_type='Chrome', 
+                                                    executable_path=CHROMEDRIVER_BIN, 
+                                                    is_headless=self.is_headless)
+            if self.is_logined:
+                fb.login_with_account(driver=browser, 
+                                        email=FB_EMAIL, 
+                                        password=FB_PASSWORD)
         except:
-            if fb.driver is not None:
-                fb.driver.quit()
+            if browser:
+                browser.close()
+                browser.quit()
 
         max_timeout = self.timeout*(1 + DEFAULT_TIMEOUT_RATIO)
         min_timeout = self.timeout*(1 - DEFAULT_TIMEOUT_RATIO)
@@ -135,6 +139,7 @@ class Handler:
             logger.debug(error_msg)
 
         try:
+            browser.close()
             browser.quit()
             logger.debug('[{}][process_item][pid={}] Quit Browser, result is SUCCESS \n'.format(helper.now(), pid))
         except Exception as e:
@@ -149,7 +154,7 @@ class Handler:
 
         end_at = helper.now()
         spent = end_at - start_at
-        logger.debug(f'[{end_at}][process_item][pid={pid}] -------- FINISH --------, spent: {spent}, {self.action}-{self.site_type} for item: {item}, browsers: {self.browsers} \n')
+        logger.debug(f'[{end_at}][process_item][pid={pid}] -------- FINISH --------, spent: {spent}, {self.action}-{self.site_type} for item: {item} \n')
 
         self.pause_escape_security_check(self.break_between_process - break_time)
 
@@ -182,8 +187,8 @@ class Handler:
 
         for chunk_index, n_item in enumerate(chunks):
             n_item_for_pool = helper.to_tuples(n_item)
-            desc = '{} {} for {} items of chunk #{}'.format(self.action, self.site_type, len(n_item_for_pool), chunk_index)
-            logger.debug('------------------------------------ [{}] start {}'.format(helper.now(), desc))
+            desc = f'{self.action} {self.site_type} for {len(n_item_for_pool)} items of chunk #{chunk_index}'
+            logger.info('------------------------------------ [{}] start {}'.format(helper.now(), desc))
 
             # maxtasksperchild=1 by https://stackoverflow.com/a/54975030
             pool = None
@@ -233,7 +238,7 @@ class Handler:
                 logger.error(helper.print_error(e))
                 raise
 
-            logger.debug('------------------------------------ [{}] end {}'.format(helper.now(), desc))
+            logger.info('------------------------------------ [{}] end {}'.format(helper.now(), desc))
 
 def main():
     argument_parser = argparse.ArgumentParser()
