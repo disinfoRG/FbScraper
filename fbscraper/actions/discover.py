@@ -1,15 +1,28 @@
 import logging
+
 logger = logging.getLogger(__name__)
 from bs4 import BeautifulSoup
 import zlib
 from helper import helper
-from config import DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_USE_ORIGINAL_URL, STATUS_SUCCESS
+from config import (
+    DEFAULT_MAX_TRY_TIMES,
+    DEFAULT_SHOULD_USE_ORIGINAL_URL,
+    STATUS_SUCCESS,
+)
 
 
 class DiscoverCrawler:
-    def __init__(self, site_url, site_id, browser, existing_article_urls, db, timeout,
-                 max_try_times=DEFAULT_MAX_TRY_TIMES,
-                 should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL):
+    def __init__(
+        self,
+        site_url,
+        site_id,
+        browser,
+        existing_article_urls,
+        db,
+        timeout,
+        max_try_times=DEFAULT_MAX_TRY_TIMES,
+        should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL,
+    ):
         self.site_url = site_url
         self.site_id = site_id
         self.browser = browser
@@ -28,10 +41,10 @@ class DiscoverCrawler:
     def enter_site(self):
         post_root_url = self.site_url
         if not self.should_use_original_url:
-            if post_root_url.endswith('/'):
-                post_root_url += 'posts'
+            if post_root_url.endswith("/"):
+                post_root_url += "posts"
             else:
-                post_root_url += '/posts'
+                post_root_url += "/posts"
         self.browser.get(post_root_url)
         helper.wait()
 
@@ -40,8 +53,12 @@ class DiscoverCrawler:
         new_count = 0
         empty_count = 0
 
-        while (helper.now() - self.start_at) < self.timeout and empty_count < self.max_try_times:
-            self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
+        while (
+            helper.now() - self.start_at
+        ) < self.timeout and empty_count < self.max_try_times:
+            self.log_crawler(
+                viewed_count, new_count, len(self.existing_article_urls), empty_count
+            )
             helper.scroll(self.browser)
             helper.wait()
 
@@ -66,15 +83,15 @@ class DiscoverCrawler:
                 self.existing_article_urls += new_post_urls
 
         crawled_time = helper.now() - self.start_at
-        time_status = f'[discover crawler - expand_page_and_insert_article] Timeout: {self.timeout}, Crawled: {crawled_time}. is_timeout={self.timeout < crawled_time}'
+        time_status = f"[discover crawler - expand_page_and_insert_article] Timeout: {self.timeout}, Crawled: {crawled_time}. is_timeout={self.timeout < crawled_time}"
         logger.debug(time_status)
 
     def remove_old_post_urls(self, post_urls):
         return list(set(post_urls) - set(self.existing_article_urls))
 
     def get_post_urls_from_html(self, html):
-        soup = BeautifulSoup(html, 'html.parser')
-        post_elements = soup.find_all('div', {'class': 'userContentWrapper'})
+        soup = BeautifulSoup(html, "html.parser")
+        post_elements = soup.find_all("div", {"class": "userContentWrapper"})
         return [self.extract_post_url_from_element(post) for post in post_elements]
 
     @staticmethod
@@ -82,33 +99,33 @@ class DiscoverCrawler:
         result = None
         anchors = post.select('[data-testid="story-subtitle"] a')
         for index, anchor in enumerate(anchors):
-            hasTimestamp = len(anchor.select('abbr > span.timestampContent')) > 0
+            hasTimestamp = len(anchor.select("abbr > span.timestampContent")) > 0
 
             if hasTimestamp:
-                url = anchor.get('href')
+                url = anchor.get("href")
                 if url:
                     url_info = helper.get_facebook_url_info(url)
-                    if url_info['permalink']:
-                        result = url_info['permalink']
+                    if url_info["permalink"]:
+                        result = url_info["permalink"]
                         break
-                    elif url_info['original_url']:
-                        result = url_info['original_url']
+                    elif url_info["original_url"]:
+                        result = url_info["original_url"]
 
         return result
 
     def insert_article(self, article_url):
         article = dict()
 
-        article['first_snapshot_at'] = 0
-        article['last_snapshot_at'] = 0
-        article['next_snapshot_at'] = -1
-        article['snapshot_count'] = 0
-        article['url_hash'] = zlib.crc32(article_url.encode())
-        article['url'] = article_url
-        article['site_id'] = self.site_id
-        article['article_type'] = 'FBPost'
-        article['created_at'] = helper.now()
-        article['redirect_to'] = None
+        article["first_snapshot_at"] = 0
+        article["last_snapshot_at"] = 0
+        article["next_snapshot_at"] = -1
+        article["snapshot_count"] = 0
+        article["url_hash"] = zlib.crc32(article_url.encode())
+        article["url"] = article_url
+        article["site_id"] = self.site_id
+        article["article_type"] = "FBPost"
+        article["created_at"] = helper.now()
+        article["redirect_to"] = None
 
         article_id = self.db.insert_article(article)
 
@@ -116,13 +133,10 @@ class DiscoverCrawler:
 
     @staticmethod
     def log_crawler(viewed_count, new_count, existing_count, empty_count):
-        timestamp = f'crawler: viewed {viewed_count} posts, add {new_count} new posts, existing {existing_count} posts in database, empty response count #{empty_count} \n'
+        timestamp = f"crawler: viewed {viewed_count} posts, add {new_count} new posts, existing {existing_count} posts in database, empty response count #{empty_count} \n"
         logger.debug(timestamp)
 
     @staticmethod
     def log_pipeline(article_id):
-        message = f'pipeline: [{STATUS_SUCCESS}] insert Article #{article_id} \n'
+        message = f"pipeline: [{STATUS_SUCCESS}] insert Article #{article_id} \n"
         logger.debug(message)
-
-
-
