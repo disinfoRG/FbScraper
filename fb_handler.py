@@ -19,8 +19,8 @@ multiprocessing.set_start_method('spawn', True)
 # self-defined
 import facebook as fb
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
-from fbscraper.actions.update.update_spider import UpdateSpider
-from fbscraper.actions.discover.discover_spider import DiscoverSpider
+from fbscraper.actions.update import UpdateCrawler
+from fbscraper.actions.discover import DiscoverCrawler
 from helper import helper, SelfDefinedError
 from config import \
     DISCOVER_ACTION, \
@@ -59,28 +59,28 @@ class Handler:
     def update_one(self, article, browser, is_group_site_type, timeout):
         article_id = article['article_id']
         article_url = article['url']
-        spider = UpdateSpider(article_url=article_url,
+        crawler = UpdateCrawler(article_url=article_url,
                                 db=db,
                                 article_id=article_id,
                                 browser=browser,
                                 timeout=timeout,
                                 is_logined=self.is_logined)
-        spider.work()
+        crawler.crawl_and_save()
 
     def discover_one(self, site, browser, is_group_site_type, timeout, max_try_times=None):
         site_url = site['url']
         site_id = site['site_id']
         existing_article_urls = [x['url'] for x in db.get_article_urls_of_site(site_id=site_id)]
         should_use_original_url = is_group_site_type
-        spider = DiscoverSpider(site_url=site_url,
-                                db=db,
-                                site_id=site_id,
+        crawler = DiscoverCrawler(site_url=site_url,
+                                 db=db,
+                                 site_id=site_id,
                                 browser=browser,
                                 existing_article_urls=existing_article_urls,
                                 max_try_times=max_try_times,
                                 timeout=timeout,
                                 should_use_original_url=should_use_original_url)
-        spider.work()
+        crawler.crawl_and_save()
 
     def process_one(self, item, browser, timeout):
         is_group_site_type = True if self.site_type == GROUP_SITE_TYPE else False
