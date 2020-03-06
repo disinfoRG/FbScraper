@@ -10,23 +10,23 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a5d3cdb5892e'
-down_revision = 'e15c209c1566'
+revision = "a5d3cdb5892e"
+down_revision = "e15c209c1566"
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
-    article_type = sa.dialects.mysql.ENUM(
-        "FBPost", "FBComment"
-    )
+    article_type = sa.dialects.mysql.ENUM("FBPost", "FBComment")
     op.alter_column(
         "Article", "article_type", nullable=False, existing_type=article_type
     )
 
 
 def downgrade():
-    article_type = sa.dialects.mysql.ENUM("Article", "FBPost", "FBComment", "PTT", "Dcard")
+    article_type = sa.dialects.mysql.ENUM(
+        "Article", "FBPost", "FBComment", "PTT", "Dcard"
+    )
     op.alter_column(
         "Article", "article_type", nullable=False, existing_type=article_type
     )

@@ -1,4 +1,5 @@
 import logging
+
 logger = logging.getLogger(__name__)
 from helper import helper
 import fbscraper.actions.discover.discover_pipeline as pipeline
@@ -7,9 +8,17 @@ from config import DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_USE_ORIGINAL_URL
 
 
 class DiscoverCrawler:
-    def __init__(self, site_url, site_id, browser, existing_article_urls, db, timeout,
-                 max_try_times=DEFAULT_MAX_TRY_TIMES,
-                 should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL):
+    def __init__(
+        self,
+        site_url,
+        site_id,
+        browser,
+        existing_article_urls,
+        db,
+        timeout,
+        max_try_times=DEFAULT_MAX_TRY_TIMES,
+        should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL,
+    ):
         self.site_url = site_url
         self.site_id = site_id
         self.browser = browser
@@ -28,10 +37,10 @@ class DiscoverCrawler:
     def enter_site(self):
         post_root_url = self.site_url
         if not self.should_use_original_url:
-            if post_root_url.endswith('/'):
-                post_root_url += 'posts'
+            if post_root_url.endswith("/"):
+                post_root_url += "posts"
             else:
-                post_root_url += '/posts'
+                post_root_url += "/posts"
         self.browser.get(post_root_url)
         helper.wait()
 
@@ -40,8 +49,12 @@ class DiscoverCrawler:
         new_count = 0
         empty_count = 0
 
-        while (helper.now() - self.start_at) < self.timeout and empty_count < self.max_try_times:
-            self.log_crawler(viewed_count, new_count, len(self.existing_article_urls), empty_count)
+        while (
+            helper.now() - self.start_at
+        ) < self.timeout and empty_count < self.max_try_times:
+            self.log_crawler(
+                viewed_count, new_count, len(self.existing_article_urls), empty_count
+            )
             helper.scroll(self.browser)
             helper.wait()
 
@@ -65,7 +78,9 @@ class DiscoverCrawler:
                 self.existing_article_urls += new_post_urls
 
         crawled_time = helper.now() - self.start_at
-        time_status = '[{}][discover_crawler.py - expand_page_and_insert_article] Timeout: {}, Crawled: {}. is_timeout={}'.format(helper.now(), self.timeout, crawled_time, self.timeout < crawled_time)
+        time_status = "[{}][discover_crawler.py - expand_page_and_insert_article] Timeout: {}, Crawled: {}. is_timeout={}".format(
+            helper.now(), self.timeout, crawled_time, self.timeout < crawled_time
+        )
         logger.debug(time_status)
 
     def remove_old_post_urls(self, post_urls):
@@ -75,7 +90,7 @@ class DiscoverCrawler:
         return parser.get_post_urls(self.browser.page_source)
 
     def log_crawler(self, viewed_count, new_count, existing_count, empty_count):
-        timestamp = '[{}] crawler viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n'.format(helper.now(), viewed_count, new_count, existing_count, empty_count)
+        timestamp = "[{}] crawler viewed {} posts, add {} new posts, existing {} posts in database, empty response count #{} \n".format(
+            helper.now(), viewed_count, new_count, existing_count, empty_count
+        )
         logger.debug(timestamp)
-
-
