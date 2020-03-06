@@ -4,7 +4,6 @@ import re
 import time
 from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 from update_parser import UpdateParser
-selenium.common.exceptions.
 
 class UpdateCrawler:
     def __init__(self, article_url, browser, parser, pipeline, logfile, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, is_logined=DEFAULT_IS_LOGINED):
