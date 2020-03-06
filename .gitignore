@@ -10,7 +10,7 @@ __pycache__/
 *.json
 *.ipynb
 *.error
-.idea/
+.idea
 *.txt
 .env_default
 backup_logs_20200212/
