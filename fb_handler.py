@@ -117,7 +117,7 @@ class Handler:
         min_timeout = self.timeout*(1 - DEFAULT_TIMEOUT_RATIO)
         timeout = helper.random_int(max=max_timeout, min=min_timeout)
 
-        error_note = 'process_status = {}, item = {}'.format(process_status, item)
+        error_note = 'item = {}'.format(item)
         is_security_check = False
         try:
             self.process_one(item=item,
