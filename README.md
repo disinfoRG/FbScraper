@@ -11,7 +11,7 @@ $ echo CHROMEDRIVER_BIN=<PATH_TO_WEBDRIVER> >> .env
 ```
 2. set database url
 ```sh
-$ echo DB_URL=mysql+pymysql://root:mysecret@127.0.0.1:3306/NewsScraping >> .env
+$ echo DB_URL=mysql+pymysql://root:mysecret@127.0.0.1:3306/fbscraper >> .env
 ```
 3. set email and password for login
 replace <YOUR_EMAIL> and <YOUR_PASSWORD> to your facebook's email and password
@@ -21,6 +21,7 @@ $ echo FB_PASSWORD=<YOUR_PASSWORD> >> .env
 ```
 4. Update your site table.  You need an API key from Airtable generated [here](https://airtable.com/account).  Add `AIRTABLE_API_KEY=<your_api_key>` to `.env`, and then:
 ```sh
+$ echo SITE_TYPES=["Fb 專頁", "Fb 公開社團"] >> .env
 $ pipenv run scrapy crawl updateSites
 ```
 5. discover new post urls for at most 100 different facebook pages using login email and password
@@ -147,7 +148,7 @@ $ pipenv run python3 fb_handler.py --discover --page --cpu 1 --max 1000 --site 5
 - settings.py
     - configure required arguments for browser and database
     - `CHROMEDRIVER_BIN`: browser's executalbe binary path
-    - `DB_URL`: url to connect to database, ex. mysql+pymysql://root:mysecret@127.0.0.1:3306/FbScraping
+    - `DB_URL`: url to connect to database, ex. mysql+pymysql://root:mysecret@127.0.0.1:3306/fbscraper
     - `AIRTABLE_API_KEY`: to update table Site in database
     - `FB_EMAIL`: email to login facebook
     - `FB_PASSWORD`: password to login facebook
