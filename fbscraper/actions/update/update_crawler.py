@@ -1,6 +1,7 @@
 import logging
 logger = logging.getLogger(__name__)
-from selenium.common.exceptions import MoveTargetOutOfBoundsException
+from helper import helper, SelfDefinedError
+from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
 import re
 from helper import helper, SelfDefinedError
 from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, \
@@ -33,14 +34,26 @@ class UpdateCrawler:
         self.enter_site()
 
         is_located = self.locate_target_post()
+        should_relocate_for_loaded_comment = None
+
         if is_located:
             try:
                 self.expand_comment()
                 should_relocate_for_loaded_comment = True
-            except:
+                
+            except TimeoutException as e:
+                # encountered LIVE video post: https://www.facebook.com/hsiweiC/posts/160025454961889
+                # with this kind of message: [TimeoutException] , note: .userContentWrapper [data-testid="UFI2CommentsCount/root"]
+                # normal video post is fine: https://www.facebook.com/hsiweiC/posts/173291537422199
+                logger.warning('[post_crawler] maybe NO COMMENTS or failed to expand comment for LIVE VIDEO')
                 should_relocate_for_loaded_comment = False
+                pass
+
+            except Exception as e:
                 # continue to save() without comment
                 # sometimes failed to expand comment due to random slow browser condition
+                logger.error('[post_crawler] failed to expand comment for unkown reason')
+                should_relocate_for_loaded_comment = False
                 pass
         else:
             should_relocate_for_loaded_comment = False
@@ -166,12 +179,12 @@ class UpdateCrawler:
                 except MoveTargetOutOfBoundsException as e:
                     # https://www.facebook.com/photo.php?fbid=3321929767823884&set=p.3321929767823884&type=3&theater
                     dialog_close_button = self.browser.find_element_by_link_text('關閉')
-                    if dialog_close_button is not None:
+                    if dialog_close_button:
                         cls_html = helper.get_html(dialog_close_button)
-                        logger.error(helper.print_error(e, cls_html))
+                        logger.warning(helper.print_error(e, cls_html))                        
+                        helper.click(dialog_close_button, self.browser)
                     else:
-                        logger.error(helper.print_error(e))
-                    is_clicked = helper.click(dialog_close_button, self.browser)
+                        logger.warning(helper.print_error(e))
 
             if not is_clicked:
                 empty_count += 1
