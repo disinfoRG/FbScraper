@@ -3,18 +3,21 @@ logger = logging.getLogger(__name__)
 from helper import helper, SelfDefinedError
 from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
 import re
-import time
-from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
-from update_parser import UpdateParser
+from helper import helper, SelfDefinedError
+from config import DEFAULT_IS_LOGINED, DEFAULT_MAX_TRY_TIMES, \
+    DEFAULT_SHOULD_LOAD_COMMENT, DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
+import fbscraper.actions.update.update_parser as parser
+import fbscraper.actions.update.update_pipeline as pipeline
+
 
 class UpdateCrawler:
-    def __init__(self, article_url, browser, parser, pipeline, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, is_logined=DEFAULT_IS_LOGINED):
+    def __init__(self, article_url, article_id, db, browser, timeout, max_try_times=DEFAULT_MAX_TRY_TIMES, is_logined=DEFAULT_IS_LOGINED):
         self.article_url = article_url
+        self.article_id = article_id
+        self.db = db
         self.browser = browser
         self.post_selector = '.permalinkPost' if is_logined else '.userContentWrapper'
         self.post_node = None
-        self.parser = parser
-        self.pipeline = pipeline
         self.max_try_times = max_try_times
         self.is_logined = is_logined
         self.start_at = None
@@ -63,8 +66,8 @@ class UpdateCrawler:
         self.save()
 
     def save(self):
-        raw_html = helper.get_html(self.post_node) if self.post_node else self.parser.get_post_raw_html(self.browser.page_source)
-        self.pipeline.update_article(raw_html)
+        raw_html = helper.get_html(self.post_node) if self.post_node else parser.get_post_raw_html(self.browser.page_source)
+        pipeline.update_article(self.db, self.article_id, raw_html)
 
     def enter_site(self):
         self.browser.get(self.article_url)
@@ -89,7 +92,6 @@ class UpdateCrawler:
             logger.debug(removed_block_text)
 
     def locate_target_post(self):
-        result = None
         self.post_node = helper.get_element(self.browser, self.post_selector)
 
         if not self.post_node:
@@ -104,8 +106,6 @@ class UpdateCrawler:
         return result
 
     def is_robot_check(self):
-        result = None
-
         # is_robot_url
         if re.match('.*/checkpoint.*', self.browser.current_url):
             result = True
@@ -118,8 +118,6 @@ class UpdateCrawler:
         return result
 
     def is_login_check(self):
-        result = None
-
         # is_login_url
         if re.match('.*/login.*', self.browser.current_url):
             result = True
