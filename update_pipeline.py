@@ -1,18 +1,19 @@
+import logging
+logger = logging.getLogger(__name__)
 import zlib
 from helper import helper
 from config import STATUS_SUCCESS, DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL
 
 class UpdatePipeline():
-    def __init__(self, article_id, db, logfile, next_snapshot_at_interval=DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL):
+    def __init__(self, article_id, db, next_snapshot_at_interval=DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL):
         self.db = db
         self.article_id = article_id
         self.snapshot_at = None
         self.next_snapshot_at_interval = next_snapshot_at_interval
-        self.logfile = logfile
 
     def log_pipeline(self, result):
         timestamp = '[{}] pipeline result: {} \n'.format(helper.now(), result)
-        self.logfile and self.logfile.write(timestamp)   
+        logger.debug(timestamp)
 
     def update_article(self, raw_data):
         self.snapshot_at = helper.now()
@@ -39,23 +40,5 @@ class UpdatePipeline():
             article['first_snapshot_at'] = self.snapshot_at
         else:
             article['first_snapshot_at'] = original_article['first_snapshot_at']
-        self.db.update_article(**article)        
+        self.db.update_article(**article)
         self.log_pipeline(f'[{STATUS_SUCCESS}] update Article #{self.article_id} after ArticleSnapshot inserted')
-
-def main():
-    import db
-    from logger import Logger
-
-    fpath = 'test_post_pipeline_{}.log'.format(helper.now())
-    logfile = Logger(open(fpath, 'a', buffering=1))
-    pipeline = UpdatePipeline([], 1426, db, logfile)
-    raw_data = 'sssaAAAAaaa'
-    pipeline.pipe_single_post_raw_data(raw_data)
-    print('pause')
-
-if __name__ == "__main__":
-    main()
-
-        
- 
-

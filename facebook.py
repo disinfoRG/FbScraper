@@ -2,6 +2,8 @@ from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 from selenium.common.exceptions import NoSuchWindowException, TimeoutException
 import json
+import logging
+logger = logging.getLogger(__name__)
 
 # self-defined
 from helper import helper
@@ -44,7 +46,7 @@ def create_driver_without_session(browser_type='Chrome', executable_path=None, i
     return result
 
 def login_with_account(driver=None, email=None, password=None):
-    print(' -----  login_with_account')
+    logger.info(' -----  login_with_account')
     driver.get('https://www.facebook.com')
 
     helper.keyin_by_selector('#email', email, driver, 5)
@@ -58,7 +60,7 @@ def is_login_success(driver, timeout=10):
         helper.wait_element_by_selector(selector='#sideNav',
                                         driver=driver,
                                         timeout=timeout)
-        print(' -----  login success')
+        logger.info(' -----  login success')
         result = True
     except TimeoutException:
         result = False
@@ -71,7 +73,7 @@ def test_create_driver_without_session():
     result = None
 
     # test_create_driver_without_session
-    print('--------- Test create browser without session: START ---------')
+    logger.debug('--------- Test create browser without session: START ---------')
     try:
         from settings import CHROMEDRIVER_BIN
         browser_type = 'Chrome'
@@ -96,17 +98,17 @@ def test_create_driver_without_session():
 
         result = driver
     except:
-        print('--------- Test create browser without session: FAILED ---------')
+        logger.debug('--------- Test create browser without session: FAILED ---------')
         result = False
         raise
 
-    print('--------- Test create browser without session: SUCCESS ---------')
+    logger.debug('--------- Test create browser without session: SUCCESS ---------')
     return result
 
 def test_login_with_account(driver):
     result = None
 
-    print('--------- Test login with email and password: START ---------')
+    logger.debug('--------- Test login with email and password: START ---------')
     try:
         from settings import FB_EMAIL, FB_PASSWORD
         email = FB_EMAIL
@@ -115,29 +117,29 @@ def test_login_with_account(driver):
 
         result = True
     except:
-        print('--------- Test login with email and password: FAILED ---------')
+        logger.debug('--------- Test login with email and password: FAILED ---------')
         result = False
         raise
 
-    print('--------- Test login with email and password: SUCCESS ---------')
+    logger.debug('--------- Test login with email and password: SUCCESS ---------')
     return result
 
 def test_is_login_success(driver):  
     result = None
 
     # test_is_login_success
-    print('--------- Test is login success: START ---------')
+    logger.debug('--------- Test is login success: START ---------')
     try:
         if not is_login_success(driver):
             raise Exception('Login failed')
 
         result = True
     except:
-        print('--------- Test is login success: FAILED ---------')
+        logger.debug('--------- Test is login success: FAILED ---------')
         result = False
         raise
 
-    print('--------- Test is login success: SUCCESS ---------')    
+    logger.debug('--------- Test is login success: SUCCESS ---------')    
     return result
 
 def test_all():
@@ -150,7 +152,7 @@ def test_all():
     driver.close()
     driver.quit()
 
-    print()
+    logger.debug()
     
 if __name__ == '__main__':
     test_all()
