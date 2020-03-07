@@ -1,8 +1,8 @@
 import logging
 
 logger = logging.getLogger(__name__)
-from helper import helper, SelfDefinedError
 from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
+from bs4 import BeautifulSoup
 import re
 from helper import helper, SelfDefinedError
 from config import (
@@ -10,9 +10,9 @@ from config import (
     DEFAULT_MAX_TRY_TIMES,
     DEFAULT_SHOULD_LOAD_COMMENT,
     DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER,
+    DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL,
+    STATUS_SUCCESS,
 )
-import fbscraper.actions.update.update_parser as parser
-import fbscraper.actions.update.update_pipeline as pipeline
 
 
 class UpdateCrawler:
@@ -39,25 +39,23 @@ class UpdateCrawler:
         self.should_load_comment = DEFAULT_SHOULD_LOAD_COMMENT
         self.should_turn_off_comment_filter = DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 
-    def log_crawler(self, depth, comment_loaders_total, clicked_count, empty_count):
-        timestamp = "crawler_timestamp_{}: expanding comments at level #{}, found comment loader total is {}, has clicked loader count is {}, empty response count #{} \n".format(
-            helper.now(), depth, comment_loaders_total, clicked_count, empty_count
-        )
-        logger.debug(timestamp)
+    @staticmethod
+    def log_crawler(depth, comment_loaders_total, clicked_count, empty_count):
+        message = f"crawler: expanding comments at level #{depth}, found comment loader total is {comment_loaders_total}, has clicked loader count is {clicked_count}, empty response count #{empty_count} \n"
+        logger.debug(message)
 
-    def crawl(self):
+    def crawl_and_save(self):
         self.start_at = helper.now()
         self.enter_site()
 
         is_located = self.locate_target_post()
-        should_relocate_for_loaded_comment = None
 
         if is_located:
             try:
                 self.expand_comment()
                 should_relocate_for_loaded_comment = True
 
-            except TimeoutException as e:
+            except TimeoutException:
                 # encountered LIVE video post: https://www.facebook.com/hsiweiC/posts/160025454961889
                 # with this kind of message: [TimeoutException] , note: .userContentWrapper [data-testid="UFI2CommentsCount/root"]
                 # normal video post is fine: https://www.facebook.com/hsiweiC/posts/173291537422199
@@ -67,11 +65,11 @@ class UpdateCrawler:
                 should_relocate_for_loaded_comment = False
                 pass
 
-            except Exception as e:
+            except Exception:
                 # continue to save() without comment
                 # sometimes failed to expand comment due to random slow browser condition
                 logger.error(
-                    "[post_crawler] failed to expand comment for unkown reason"
+                    "[post_crawler] failed to expand comment for unknown reason"
                 )
                 should_relocate_for_loaded_comment = False
                 pass
@@ -85,15 +83,19 @@ class UpdateCrawler:
             self.locate_target_post()
 
         # save html with relocated post node
-        self.save()
-
-    def save(self):
         raw_html = (
             helper.get_html(self.post_node)
             if self.post_node
-            else parser.get_post_raw_html(self.browser.page_source)
+            else self.get_post_raw_html(self.browser.page_source)
         )
-        pipeline.update_article(self.db, self.article_id, raw_html)
+        self.save(raw_html)
+
+    def save(self, raw_html):
+        now = helper.now()
+        self.snapshot_article(now, raw_html)
+        self.log_pipeline(table="snapshot")
+        self.refresh_article_snapshot_history(now, self.article_id)
+        self.log_pipeline(table="article")
 
     def enter_site(self):
         self.browser.get(self.article_url)
@@ -108,32 +110,26 @@ class UpdateCrawler:
         if is_login_block:
             raise SelfDefinedError("Encountered security check requiring user to login")
 
-        success_status = 'crawler_timestamp_{}: successful to enter site with url "{}"'.format(
-            helper.now(), self.article_url
+        success_status = (
+            f'crawler: successful to enter site with url "{self.article_url}"'
         )
         logger.debug(success_status)
 
         if not self.is_logined:
             block_selector = "#headerArea"
             helper.remove_element_by_selector(block_selector, self.browser)
-            removed_block_text = 'crawler_timestamp_{}: removed block element for non-logined browsing with selector="{}" \n'.format(
-                helper.now(), block_selector
-            )
+            removed_block_text = f'crawler: removed block element for non-logined browsing with selector="{block_selector}" \n'
             logger.debug(removed_block_text)
 
     def locate_target_post(self):
         self.post_node = helper.get_element(self.browser, self.post_selector)
 
         if not self.post_node:
-            post_not_found = 'crawler_timestamp_{}: failed and article not found with selector "{}", article url is {} \n'.format(
-                helper.now(), self.post_selector, self.article_url
-            )
+            post_not_found = f'crawler: failed and article not found with selector "{self.post_selector}", article url is {self.article_url} \n'
             logger.debug(post_not_found)
             result = False
         else:
-            post_is_found = 'crawler_timestamp_{}: success and article is located with selector "{}", article url is {} \n'.format(
-                helper.now(), self.post_selector, self.article_url
-            )
+            post_is_found = f'crawler: success and article is located with selector "{self.post_selector}", article url is {self.article_url} \n'
             logger.debug(post_is_found)
             result = True
 
@@ -192,21 +188,15 @@ class UpdateCrawler:
 
         helper.click_with_move(filter_menu_link_selector, self.browser)
         logger.debug(
-            'crawler_timestamp_{}: clicked comment filter button with selector="{}" \n'.format(
-                helper.now(), filter_menu_link_selector
-            )
+            f'crawler: clicked comment filter button with selector="{filter_menu_link_selector}" \n'
         )
         helper.move_to_element_by_selector(filter_menu_selector, self.browser)
         logger.debug(
-            'crawler_timestamp_{}: comment filter menu is shown with selector="{}" \n'.format(
-                helper.now(), filter_menu_selector
-            )
+            f'crawler: comment filter menu is shown with selector="{filter_menu_selector}" \n'
         )
         helper.click_with_move(unfiltered_option_selector, self.browser)
         logger.debug(
-            'crawler_timestamp_{}: clicked comment filter "RANKED_UNFILTERED" with selector="{}" \n'.format(
-                helper.now(), unfiltered_option_selector
-            )
+            f'crawler: clicked comment filter "RANKED_UNFILTERED" with selector="{unfiltered_option_selector}" \n'
         )
 
     def load_comment(self, depth, clicked_max_times=50):
@@ -253,7 +243,51 @@ class UpdateCrawler:
             helper.wait()
 
         crawled_time = helper.now() - self.start_at
-        time_status = "[{}][update_crawler.py - load_comment] Timeout: {}, Crawled: {}. is_timeout={}".format(
-            helper.now(), self.timeout, crawled_time, self.timeout < crawled_time
-        )
+        time_status = f"[update.py - load_comment] Timeout: {self.timeout}, Crawled: {crawled_time}. is_timeout={self.timeout < crawled_time}"
         logger.debug(time_status)
+
+    @staticmethod
+    def get_post_raw_html(page_source):
+        soup = BeautifulSoup(page_source, "html.parser")
+
+        if len(soup.select(".permalinkPost")) > 0:
+            result = str(soup.select(".permalinkPost")[0])
+        elif len(soup.select(".userContentWrapper")) > 0:
+            result = str(soup.select(".userContentWrapper")[0])
+        else:
+            # return whole page's html if cannot locate post node
+            # ex. failed for non-existing article: https://www.facebook.com/fuqidao168/posts/2466415456951685
+            # ex. failed for some video post: https://www.facebook.com/znk168/posts/412649276099554
+            result = page_source
+
+        return result
+
+    def snapshot_article(self, snapshot_at, raw_data):
+        snapshot = dict()
+        snapshot["snapshot_at"] = snapshot_at
+        snapshot["raw_data"] = raw_data
+        snapshot["article_id"] = self.article_id
+        self.db.insert_article_snapshot(snapshot)
+
+    def refresh_article_snapshot_history(self, snapshot_at, article_id):
+        article = dict()
+        original_article = self.db.get_article_by_id(article_id=article_id)
+
+        article["article_id"] = article_id
+        article["last_snapshot_at"] = snapshot_at
+        article["next_snapshot_at"] = snapshot_at + DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL
+        article["snapshot_count"] = original_article["snapshot_count"] + 1
+        if original_article["first_snapshot_at"] == 0:
+            article["first_snapshot_at"] = snapshot_at
+        else:
+            article["first_snapshot_at"] = original_article["first_snapshot_at"]
+        self.db.update_article(**article)
+
+    def log_pipeline(self, table):
+        result = None
+        if table == "snapshot":
+            result = f"[{STATUS_SUCCESS}] insert ArticleSnapshot #{self.article_id}"
+        elif table == "article":
+            result = f"[{STATUS_SUCCESS}] update Article #{self.article_id} after ArticleSnapshot inserted"
+        timestamp = f"pipeline: {result} \n"
+        logger.debug(timestamp)

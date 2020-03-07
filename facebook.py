@@ -1,7 +1,5 @@
 from selenium import webdriver
-from selenium.webdriver.remote.webdriver import WebDriver as RemoteWebDriver
 from selenium.common.exceptions import NoSuchWindowException, TimeoutException
-import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,8 +64,6 @@ def login_with_account(driver=None, email=None, password=None):
 
 
 def is_login_success(driver, timeout=10):
-    result = None
-
     try:
         helper.wait_element_by_selector(
             selector="#sideNav", driver=driver, timeout=timeout
@@ -78,7 +74,3 @@ def is_login_success(driver, timeout=10):
         result = False
 
     return result
-
-
-if __name__ == "__main__":
-    test_all()
