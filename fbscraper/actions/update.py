@@ -5,7 +5,7 @@ from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsEx
 from bs4 import BeautifulSoup
 import re
 from helper import helper, SelfDefinedError
-from config import (
+from settings import (
     DEFAULT_IS_LOGINED,
     DEFAULT_MAX_TRY_TIMES,
     DEFAULT_SHOULD_LOAD_COMMENT,

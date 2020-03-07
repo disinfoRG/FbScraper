@@ -3,6 +3,7 @@
 .DS_Store
 .idea
 tmp/
+test_ci.sh
 
 ## Python
 # Byte-compiled / optimized / DLL files

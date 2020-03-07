@@ -345,7 +345,7 @@ def main():
 
 
 if __name__ == "__main__":
-    from config import DEFAULT_BREAK_BETWEEN_PROCESS
+    from settings import DEFAULT_BREAK_BETWEEN_PROCESS
 
     break_time = helper.random_int(DEFAULT_BREAK_BETWEEN_PROCESS)
     print()

@@ -24,7 +24,7 @@ from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from fbscraper.actions.update import UpdateCrawler
 from fbscraper.actions.discover import DiscoverCrawler
 from helper import helper, SelfDefinedError
-from config import (
+from settings import (
     DISCOVER_ACTION,
     UPDATE_ACTION,
     GROUP_SITE_TYPE,
