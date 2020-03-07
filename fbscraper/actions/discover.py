@@ -9,6 +9,7 @@ from settings import (
     DEFAULT_SHOULD_USE_ORIGINAL_URL,
     STATUS_SUCCESS,
 )
+import facebook as fb
 
 
 class DiscoverCrawler:
@@ -46,6 +47,8 @@ class DiscoverCrawler:
             else:
                 post_root_url += "/posts"
         self.browser.get(post_root_url)
+
+        fb.raise_if_security_check(self.browser)
         helper.wait()
 
     def expand_page_and_insert_article(self):
