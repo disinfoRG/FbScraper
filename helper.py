@@ -16,10 +16,6 @@ from selenium.common.exceptions import (
 )
 
 
-class SelfDefinedError(Exception):
-    pass
-
-
 class Helper:
     def __init__(self):
         return

@@ -2,7 +2,7 @@ import logging
 import os
 
 logging.basicConfig(
-    format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+    format="[%(levelname)s] %(asctime)s %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     level=os.getenv("LOG_LEVEL", "INFO"),
     handlers=[
@@ -23,7 +23,7 @@ import facebook as fb
 from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
 from fbscraper.actions.update import UpdateCrawler
 from fbscraper.actions.discover import DiscoverCrawler
-from helper import helper, SelfDefinedError
+from helper import helper
 from settings import (
     DISCOVER_ACTION,
     UPDATE_ACTION,
@@ -151,7 +151,7 @@ class Handler:
         is_security_check = False
         try:
             self.process_one(item=item, browser=browser, timeout=timeout)
-        except SelfDefinedError as e:
+        except fb.SecurityCheckError as e:
             # encountered security check for robot or login
             is_security_check = True
             error_msg = "[{}][process_item][pid={}] Encountered security check and failed to {}-{} for item, error: {} \n".format(

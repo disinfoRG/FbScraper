@@ -1,11 +1,16 @@
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchWindowException, TimeoutException
+import re
 import logging
 
 logger = logging.getLogger(__name__)
 
 # self-defined
 from helper import helper
+
+
+class SecurityCheckError(Exception):
+    pass
 
 
 def create_driver_without_session(
@@ -74,3 +79,25 @@ def is_login_success(driver, timeout=10):
         result = False
 
     return result
+
+
+def raise_if_security_check(driver):
+    logger.debug(" ----- checking if encountered facebook's security check")
+
+    # scroll to trigger any hidden security check
+    helper.scroll(driver)
+
+    is_robot_url = re.match(".*/checkpoint.*", driver.current_url)
+    is_forced_robot_verify = len(driver.find_elements_by_css_selector("#captcha")) > 0
+    if is_robot_url or is_forced_robot_verify:
+        raise SecurityCheckError("Encountered security check if user is a robot")
+    logger.debug(" ----- no robot check")
+
+    is_login_url = re.match(".*/login.*", driver.current_url)
+    # id of button with text: "忘記帳號？" but not the id for page of "稍後再說"
+    is_forced_login_verify = (
+        len(driver.find_elements_by_css_selector("#login_link")) > 0
+    )
+    if is_login_url or is_forced_login_verify:
+        raise SecurityCheckError("Encountered security check requiring user to login")
+    logger.debug(" ----- no login check")

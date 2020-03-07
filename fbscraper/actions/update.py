@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
 from bs4 import BeautifulSoup
 import re
-from helper import helper, SelfDefinedError
+from helper import helper
 from settings import (
     DEFAULT_IS_LOGINED,
     DEFAULT_MAX_TRY_TIMES,
@@ -13,6 +13,7 @@ from settings import (
     DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL,
     STATUS_SUCCESS,
 )
+import facebook as fb
 
 
 class UpdateCrawler:
@@ -99,16 +100,7 @@ class UpdateCrawler:
 
     def enter_site(self):
         self.browser.get(self.article_url)
-        # scroll to trigger any hidden security check
-        helper.scroll(self.browser)
-
-        is_robot_block = self.is_robot_check()
-        if is_robot_block:
-            raise SelfDefinedError("Encountered security check if user is a robot")
-
-        is_login_block = self.is_login_check()
-        if is_login_block:
-            raise SelfDefinedError("Encountered security check requiring user to login")
+        fb.raise_if_security_check(self.browser)
 
         success_status = (
             f'crawler: successful to enter site with url "{self.article_url}"'
