@@ -4,7 +4,7 @@ logger = logging.getLogger(__name__)
 from bs4 import BeautifulSoup
 import zlib
 from helper import helper
-from config import (
+from settings import (
     DEFAULT_MAX_TRY_TIMES,
     DEFAULT_SHOULD_USE_ORIGINAL_URL,
     STATUS_SUCCESS,
