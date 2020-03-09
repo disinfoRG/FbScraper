@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import pugsql
 from settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
