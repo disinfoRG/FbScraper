@@ -4,8 +4,8 @@ logger = logging.getLogger(__name__)
 from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
 from bs4 import BeautifulSoup
 import re
-from helper import helper
-from settings import (
+from fbscraper.helper import helper
+from fbscraper.settings import (
     DEFAULT_IS_LOGINED,
     DEFAULT_MAX_TRY_TIMES,
     DEFAULT_SHOULD_LOAD_COMMENT,
@@ -13,7 +13,7 @@ from settings import (
     DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL,
     STATUS_SUCCESS,
 )
-import facebook as fb
+import fbscraper.facebook as fb
 
 
 class UpdateCrawler:

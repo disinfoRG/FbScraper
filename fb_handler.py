@@ -1,4 +1,4 @@
-from settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
+from fbscraper.settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
 import logging
 import os
 
@@ -20,12 +20,14 @@ import multiprocessing
 multiprocessing.set_start_method("spawn", True)
 
 # self-defined
-import facebook as fb
-from settings import FB_EMAIL, FB_PASSWORD, CHROMEDRIVER_BIN
+import fbscraper.facebook as fb
 from fbscraper.actions.update import UpdateCrawler
 from fbscraper.actions.discover import DiscoverCrawler
-from helper import helper
-from settings import (
+from fbscraper.helper import helper
+from fbscraper.settings import (
+    FB_EMAIL,
+    FB_PASSWORD,
+    CHROMEDRIVER_BIN,
     DISCOVER_ACTION,
     UPDATE_ACTION,
     GROUP_SITE_TYPE,
