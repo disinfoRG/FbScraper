@@ -1,4 +1,4 @@
-from settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
+from fbscraper.settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
 import logging
 import os
 
