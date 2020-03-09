@@ -3,13 +3,13 @@ import logging
 logger = logging.getLogger(__name__)
 from bs4 import BeautifulSoup
 import zlib
-from helper import helper
-from settings import (
+from fbscraper.helper import helper
+from fbscraper.settings import (
     DEFAULT_MAX_TRY_TIMES,
     DEFAULT_SHOULD_USE_ORIGINAL_URL,
     STATUS_SUCCESS,
 )
-import facebook as fb
+import fbscraper.facebook as fb
 
 
 class DiscoverCrawler:

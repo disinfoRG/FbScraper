@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # self-defined
-from helper import helper
+from .helper import helper
 
 
 class SecurityCheckError(Exception):
