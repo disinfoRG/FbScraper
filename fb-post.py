@@ -2,7 +2,7 @@
 
 import argparse
 import pugsql
-from settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
+from fbscraper.settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
 import logging
 
 logging.basicConfig(
@@ -17,9 +17,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # self-defined
-import facebook as fb
+import fbscraper.facebook as fb
 from fbscraper.actions.update import UpdateCrawler
-from settings import (
+from fbscraper.settings import (
     POST_DEFAULT_TIMEOUT,
     DB_URL,
     DEFAULT_BROWSER_TYPE,
