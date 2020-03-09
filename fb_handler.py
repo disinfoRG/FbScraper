@@ -1,10 +1,11 @@
+from settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
 import logging
 import os
 
 logging.basicConfig(
-    format="[%(levelname)s] %(asctime)s %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=os.getenv("LOG_LEVEL", "INFO"),
+    format=LOG_FORMAT,
+    datefmt=LOG_DATEFMT,
+    level=LOG_LEVEL,
     handlers=[
         logging.StreamHandler(),
         logging.FileHandler("fb_handler.log", encoding="utf-8"),
@@ -29,8 +30,8 @@ from settings import (
     UPDATE_ACTION,
     GROUP_SITE_TYPE,
     PAGE_SITE_TYPE,
-    DISCOVER_TIMEOUT,
-    UPDATE_TIMEOUT,
+    DISCOVER_DEFAULT_TIMEOUT,
+    UPDATE_DEFAULT_TIMEOUT,
     DEFAULT_IS_LOGINED,
     DEFAULT_IS_HEADLESS,
     DEFAULT_MAX_AMOUNT_OF_ITEMS,
@@ -403,10 +404,10 @@ def main():
 
     if args.discover:
         action = DISCOVER_ACTION
-        timeout = DISCOVER_TIMEOUT
+        timeout = DISCOVER_DEFAULT_TIMEOUT
     elif args.update:
         action = UPDATE_ACTION
-        timeout = UPDATE_TIMEOUT
+        timeout = UPDATE_DEFAULT_TIMEOUT
     else:
         raise Exception("Please specified valid action")
 
