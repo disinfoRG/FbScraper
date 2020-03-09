@@ -1,8 +1,8 @@
 import logging
 
 logger = logging.getLogger(__name__)
-from helper import helper
-from settings import STATUS_SUCCESS, DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL
+from fbscraper.helper import helper
+from fbscraper.settings import STATUS_SUCCESS, DEFAULT_NEXT_SNAPSHOT_AT_INTERVAL
 
 
 def log_pipeline(result):
