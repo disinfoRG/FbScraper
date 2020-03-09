@@ -29,20 +29,18 @@ from settings import (
 
 
 def main():
-    article_id = None
-    browser = None
-
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument(
-        "article_id", help="specify article id for update",
+        "article_id", type=int, help="specify article id for update",
+    )
+    argument_parser.add_argument(
+        "--headful",
+        action="store_true",
+        help="run selenium in headful mode",
+        default=(not DEFAULT_IS_HEADLESS),
     )
     args = argument_parser.parse_args()
-
-    if args.article_id:
-        try:
-            article_id = int(args.article_id)
-        except Exception as e:
-            raise Exception("Please give a valid article id for update")
+    article_id = args.article_id
 
     logger.info(f"start with article id {article_id}")
 
@@ -56,7 +54,7 @@ def main():
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
             executable_path=DEFAULT_EXECUTABLE_PATH,
-            is_headless=DEFAULT_IS_HEADLESS,
+            is_headless=(not args.headful),
         )
 
         crawler = UpdateCrawler(
@@ -68,14 +66,13 @@ def main():
         )
 
         crawler.crawl_and_save()
+
+        browser.close()
+        browser.quit()
     except fb.SecurityCheckError as e:
         logger.error(e)
     except Exception as e:
         logger.debug(e)
-
-    if browser:
-        browser.close()
-        browser.quit()
 
     logger.info(f"end with article id {article_id}")
 

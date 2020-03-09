@@ -29,20 +29,18 @@ from settings import (
 
 
 def main():
-    site_id = None
-    browser = None
-
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument(
-        "site_id", help="specify site id for discover",
+        "site_id", type=int, help="specify site id for discover",
+    )
+    argument_parser.add_argument(
+        "--headful",
+        action="store_true",
+        help="run selenium in headful mode",
+        default=(not DEFAULT_IS_HEADLESS),
     )
     args = argument_parser.parse_args()
-
-    if args.site_id:
-        try:
-            site_id = int(args.site_id)
-        except Exception as e:
-            raise Exception("Please give a valid site id for discover")
+    site_id = args.site_id
 
     logger.info(f"start with site id {site_id}")
 
@@ -60,7 +58,7 @@ def main():
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
             executable_path=DEFAULT_EXECUTABLE_PATH,
-            is_headless=DEFAULT_IS_HEADLESS,
+            is_headless=(not args.headful),
         )
 
         crawler = DiscoverCrawler(
@@ -73,14 +71,13 @@ def main():
         )
 
         crawler.crawl_and_save()
+
+        browser.close()
+        browser.quit()
     except fb.SecurityCheckError as e:
         logger.error(e)
     except Exception as e:
         logger.debug(e)
-
-    if browser:
-        browser.close()
-        browser.quit()
 
     logger.info(f"end with site id {site_id}")
 
