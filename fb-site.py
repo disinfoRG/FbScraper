@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 import fbscraper.facebook as fb
 from fbscraper.actions.discover import DiscoverCrawler
 from fbscraper.settings import (
-    SITE_DEFAULT_TIMEOUT,
+    SITE_DEFAULT_LIMIT_SEC,
     DB_URL,
     DEFAULT_BROWSER_TYPE,
     DEFAULT_EXECUTABLE_PATH,
@@ -67,7 +67,7 @@ def main():
             site_url=site_url,
             site_id=site_id,
             existing_article_urls=existing_article_urls,
-            timeout=SITE_DEFAULT_TIMEOUT,
+            limit_sec=SITE_DEFAULT_LIMIT_SEC,
         )
 
         crawler.crawl_and_save()

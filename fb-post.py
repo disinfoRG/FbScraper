@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 import fbscraper.facebook as fb
 from fbscraper.actions.update import UpdateCrawler
 from fbscraper.settings import (
-    POST_DEFAULT_TIMEOUT,
+    POST_DEFAULT_LIMIT_SEC,
     DB_URL,
     DEFAULT_BROWSER_TYPE,
     DEFAULT_EXECUTABLE_PATH,
@@ -62,7 +62,7 @@ def main():
             db=db,
             article_id=article_id,
             browser=browser,
-            timeout=POST_DEFAULT_TIMEOUT,
+            limit_sec=POST_DEFAULT_LIMIT_SEC,
         )
 
         crawler.crawl_and_save()
