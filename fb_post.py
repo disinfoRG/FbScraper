@@ -11,7 +11,7 @@ logging.basicConfig(
     level=LOG_LEVEL,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("fb-post.log", encoding="utf-8"),
+        logging.FileHandler("fb_post.log", encoding="utf-8"),
     ],
 )
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ from fbscraper.settings import (
 )
 
 
-def main():
+def main(raw_args=None):
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument(
         "article_id", type=int, help="specify article id for update",
@@ -39,7 +39,7 @@ def main():
         help="run selenium in headful mode",
         default=(not DEFAULT_IS_HEADLESS),
     )
-    args = argument_parser.parse_args()
+    args = argument_parser.parse_args(raw_args)
     article_id = args.article_id
 
     logger.info(f"start with article id {article_id}")

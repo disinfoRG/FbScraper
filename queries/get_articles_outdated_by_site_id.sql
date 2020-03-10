@@ -6,4 +6,3 @@ where
   and next_snapshot_at < :now
   and article_type="FBPost"
 ORDER BY next_snapshot_at ASC
-LIMIT :amount

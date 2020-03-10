@@ -1,9 +1,7 @@
 *.ini
-.env
 .DS_Store
 .idea
 tmp/
-test_ci.sh
 
 ## Python
 # Byte-compiled / optimized / DLL files
@@ -136,7 +134,6 @@ dmypy.json
 
 cookies/
 *.log
-.env
 chromedriver
 geckodriver
 __pycache__/
@@ -145,18 +142,3 @@ __pycache__/
 *.txt
 *.iml
 *.xml
-
-.env_default
-backup_logs_20200212/
-middle2_log_backup/
-test_ArticleSnapshot.html
-test_None.py
-test_helper.py
-test_multiprocess.py
-test_no_comment_article.html
-test_nothing.py
-test_thread.py
-test_without_login_https-::www.facebook.com:almondbrother:posts:3070894019610988.html
-useful_sql.sql
-z_dummy_logfile
-crawler_timestamp_1581746754: successfu

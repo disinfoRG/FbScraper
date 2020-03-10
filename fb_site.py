@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
 import argparse
 import pugsql
+import time
 from fbscraper.settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
 import logging
 
@@ -11,12 +11,13 @@ logging.basicConfig(
     level=LOG_LEVEL,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("fb-site.log", encoding="utf-8"),
+        logging.FileHandler("fb_site.log", encoding="utf-8"),
     ],
 )
 logger = logging.getLogger(__name__)
 
 # self-defined
+import fb_post
 import fbscraper.facebook as fb
 from fbscraper.actions.discover import DiscoverCrawler
 from fbscraper.settings import (
@@ -27,26 +28,21 @@ from fbscraper.settings import (
     DEFAULT_IS_HEADLESS,
 )
 
+db = pugsql.module("queries")
+db.connect(DB_URL)
 
-def main():
-    argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument(
-        "site_id", type=int, help="specify site id for discover",
+
+def update(site_id, headful):
+    articles = db.get_articles_outdated_by_site_id(
+        site_id=site_id, now=int(time.time())
     )
-    argument_parser.add_argument(
-        "--headful",
-        action="store_true",
-        help="run selenium in headful mode",
-        default=(not DEFAULT_IS_HEADLESS),
-    )
-    args = argument_parser.parse_args()
-    site_id = args.site_id
+    for article in articles:
+        article_id = str(article["article_id"])
+        args = [article_id] if not headful else [article_id, "--headful"]
+        fb_post.main(args)
 
-    logger.info(f"start with site id {site_id}")
 
-    db = pugsql.module("queries")
-    db.connect(DB_URL)
-
+def discover(site_id, headful):
     site = db.get_site_by_id(site_id=site_id)
     site_url = site["url"]
 
@@ -58,7 +54,7 @@ def main():
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
             executable_path=DEFAULT_EXECUTABLE_PATH,
-            is_headless=(not args.headful),
+            is_headless=(not headful),
         )
 
         crawler = DiscoverCrawler(
@@ -79,7 +75,34 @@ def main():
     except Exception as e:
         logger.debug(e)
 
-    logger.info(f"end with site id {site_id}")
+
+def main():
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument(
+        "site_id", type=int, help="by default, discover article urls for given site id",
+    )
+    argument_parser.add_argument(
+        "--headful",
+        action="store_true",
+        help="run selenium in headful mode",
+        default=(not DEFAULT_IS_HEADLESS),
+    )
+    argument_parser.add_argument(
+        "--update",
+        action="store_true",
+        help="snapshot html of site's discovered articles",
+        default=(not DEFAULT_IS_HEADLESS),
+    )
+    args = argument_parser.parse_args()
+
+    logger.info(f"start with site id {args.site_id}")
+
+    if not args.update:
+        discover(site_id=args.site_id, headful=args.headful)
+    else:
+        update(site_id=args.site_id, headful=args.headful)
+
+    logger.info(f"end with site id {args.site_id}")
 
 
 if __name__ == "__main__":
