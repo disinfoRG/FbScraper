@@ -23,7 +23,7 @@ class UpdateCrawler:
         article_id,
         db,
         browser,
-        timeout,
+        limit_sec,
         max_try_times=DEFAULT_MAX_TRY_TIMES,
         is_logined=DEFAULT_IS_LOGINED,
     ):
@@ -36,7 +36,7 @@ class UpdateCrawler:
         self.max_try_times = max_try_times
         self.is_logined = is_logined
         self.start_at = None
-        self.timeout = timeout
+        self.limit_sec = limit_sec
         self.should_load_comment = DEFAULT_SHOULD_LOAD_COMMENT
         self.should_turn_off_comment_filter = DEFAULT_SHOULD_TURN_OFF_COMMENT_FILTER
 
@@ -191,7 +191,7 @@ class UpdateCrawler:
             f'crawler: clicked comment filter "RANKED_UNFILTERED" with selector="{unfiltered_option_selector}" \n'
         )
 
-    def load_comment(self, depth, clicked_max_times=50):
+    def load_comment(self, depth):
         comment_expander_selector = '[data-testid="UFI2CommentsPagerRenderer/pager_depth_{}"]'.format(
             depth
         )
@@ -200,11 +200,7 @@ class UpdateCrawler:
         comment_loaders_total = 0
         self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
 
-        while (
-            (helper.now() - self.start_at) < self.timeout
-            and empty_count < self.max_try_times
-            and clicked_count < clicked_max_times
-        ):
+        while (helper.now() - self.start_at) < self.limit_sec:
             comment_loaders = self.post_node.find_elements_by_css_selector(
                 comment_expander_selector
             )
@@ -235,7 +231,7 @@ class UpdateCrawler:
             helper.wait()
 
         crawled_time = helper.now() - self.start_at
-        time_status = f"[update.py - load_comment] Timeout: {self.timeout}, Crawled: {crawled_time}. is_timeout={self.timeout < crawled_time}"
+        time_status = f"[update.py - load_comment] LimitSec: {self.limit_sec}, Crawled: {crawled_time}. is_over_limit_sec={self.limit_sec < crawled_time}"
         logger.debug(time_status)
 
     @staticmethod

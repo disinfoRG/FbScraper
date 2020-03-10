@@ -32,8 +32,8 @@ from fbscraper.settings import (
     UPDATE_ACTION,
     GROUP_SITE_TYPE,
     PAGE_SITE_TYPE,
-    DISCOVER_DEFAULT_TIMEOUT,
-    UPDATE_DEFAULT_TIMEOUT,
+    DISCOVER_DEFAULT_LIMIT_SEC,
+    UPDATE_DEFAULT_LIMIT_SEC,
     DEFAULT_IS_LOGINED,
     DEFAULT_IS_HEADLESS,
     DEFAULT_MAX_AMOUNT_OF_ITEMS,
@@ -41,7 +41,6 @@ from fbscraper.settings import (
     DEFAULT_BREAK_BETWEEN_PROCESS,
     DEFAULT_MAX_AUTO_TIMES,
     DEFAULT_CPU,
-    DEFAULT_TIMEOUT_RATIO,
 )
 
 db = pugsql.module("queries")
@@ -54,7 +53,7 @@ class Handler:
         action,
         site_type,
         is_logined,
-        timeout,
+        limit_sec,
         is_headless,
         max_amount_of_items,
         n_amount_in_a_chunk,
@@ -66,7 +65,7 @@ class Handler:
         self.action = action
         self.site_type = site_type
         self.is_logined = is_logined
-        self.timeout = timeout
+        self.limit_sec = limit_sec
         self.is_headless = is_headless
         self.max_amount_of_items = max_amount_of_items
         self.n_amount_in_a_chunk = n_amount_in_a_chunk
@@ -75,7 +74,7 @@ class Handler:
         self.max_auto_times = max_auto_times
         self.cpu = cpu
 
-    def update_one(self, article, browser, is_group_site_type, timeout):
+    def update_one(self, article, browser, is_group_site_type, limit_sec):
         article_id = article["article_id"]
         article_url = article["url"]
         crawler = UpdateCrawler(
@@ -83,13 +82,13 @@ class Handler:
             db=db,
             article_id=article_id,
             browser=browser,
-            timeout=timeout,
+            limit_sec=limit_sec,
             is_logined=self.is_logined,
         )
         crawler.crawl_and_save()
 
     def discover_one(
-        self, site, browser, is_group_site_type, timeout, max_try_times=None
+        self, site, browser, is_group_site_type, limit_sec, max_try_times=None
     ):
         site_url = site["url"]
         site_id = site["site_id"]
@@ -104,18 +103,18 @@ class Handler:
             browser=browser,
             existing_article_urls=existing_article_urls,
             max_try_times=max_try_times,
-            timeout=timeout,
+            limit_sec=limit_sec,
             should_use_original_url=should_use_original_url,
         )
         crawler.crawl_and_save()
 
-    def process_one(self, item, browser, timeout):
+    def process_one(self, item, browser, limit_sec):
         is_group_site_type = True if self.site_type == GROUP_SITE_TYPE else False
 
         if self.action == DISCOVER_ACTION:
-            self.discover_one(item, browser, is_group_site_type, timeout)
+            self.discover_one(item, browser, is_group_site_type, limit_sec)
         elif self.action == UPDATE_ACTION:
-            self.update_one(item, browser, is_group_site_type, timeout)
+            self.update_one(item, browser, is_group_site_type, limit_sec)
 
     def process_item(self, item):
         break_time = helper.random_int(max=self.break_between_process)
@@ -146,14 +145,10 @@ class Handler:
                 browser.close()
                 browser.quit()
 
-        max_timeout = self.timeout * (1 + DEFAULT_TIMEOUT_RATIO)
-        min_timeout = self.timeout * (1 - DEFAULT_TIMEOUT_RATIO)
-        timeout = helper.random_int(max=max_timeout, min=min_timeout)
-
         error_note = "item = {}".format(item)
         is_security_check = False
         try:
-            self.process_one(item=item, browser=browser, timeout=timeout)
+            self.process_one(item=item, browser=browser, limit_sec=self.limit_sec)
         except fb.SecurityCheckError as e:
             # encountered security check for robot or login
             is_security_check = True
@@ -340,10 +335,10 @@ def main():
         help="apply facebook login, default is without login",
     )
     argument_parser.add_argument(
-        "-t",
-        "--timeout",
+        "-ls",
+        "--limit-sec",
         action="store",
-        help="timeout for a site discover or an article update",
+        help="limit seconds for a site discover or an article update",
     )
     argument_parser.add_argument(
         "-nh",
@@ -395,7 +390,7 @@ def main():
     action = None
     site_type = None
     is_logined = DEFAULT_IS_LOGINED
-    timeout = None
+    limit_sec = None
     is_headless = DEFAULT_IS_HEADLESS
     max_amount_of_items = DEFAULT_MAX_AMOUNT_OF_ITEMS
     cpu = DEFAULT_CPU
@@ -406,10 +401,10 @@ def main():
 
     if args.discover:
         action = DISCOVER_ACTION
-        timeout = DISCOVER_DEFAULT_TIMEOUT
+        limit_sec = DISCOVER_DEFAULT_LIMIT_SEC
     elif args.update:
         action = UPDATE_ACTION
-        timeout = UPDATE_DEFAULT_TIMEOUT
+        limit_sec = UPDATE_DEFAULT_LIMIT_SEC
     else:
         raise Exception("Please specified valid action")
 
@@ -423,9 +418,9 @@ def main():
     if args.login:
         is_logined = True
 
-    if args.timeout:
+    if args.limit_sec:
         try:
-            timeout = int(args.timeout)
+            limit_sec = int(args.limit_sec)
         except Exception as e:
             logger.error(helper.print_error(e))
             raise
@@ -479,7 +474,7 @@ def main():
         action,
         site_type,
         is_logined=is_logined,
-        timeout=timeout,
+        limit_sec=limit_sec,
         is_headless=is_headless,
         max_amount_of_items=max_amount_of_items,
         n_amount_in_a_chunk=n_amount_in_a_chunk,

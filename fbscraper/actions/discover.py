@@ -20,7 +20,7 @@ class DiscoverCrawler:
         browser,
         existing_article_urls,
         db,
-        timeout,
+        limit_sec,
         max_try_times=DEFAULT_MAX_TRY_TIMES,
         should_use_original_url=DEFAULT_SHOULD_USE_ORIGINAL_URL,
     ):
@@ -31,7 +31,7 @@ class DiscoverCrawler:
         self.max_try_times = max_try_times if max_try_times else DEFAULT_MAX_TRY_TIMES
         self.db = db
         self.should_use_original_url = should_use_original_url
-        self.timeout = timeout
+        self.limit_sec = limit_sec
         self.start_at = None
 
     def crawl_and_save(self):
@@ -58,7 +58,7 @@ class DiscoverCrawler:
 
         while (
             helper.now() - self.start_at
-        ) < self.timeout and empty_count < self.max_try_times:
+        ) < self.limit_sec and empty_count < self.max_try_times:
             self.log_crawler(
                 viewed_count, new_count, len(self.existing_article_urls), empty_count
             )
@@ -86,7 +86,7 @@ class DiscoverCrawler:
                 self.existing_article_urls += new_post_urls
 
         crawled_time = helper.now() - self.start_at
-        time_status = f"[discover crawler - expand_page_and_insert_article] Timeout: {self.timeout}, Crawled: {crawled_time}. is_timeout={self.timeout < crawled_time}"
+        time_status = f"[discover crawler - expand_page_and_insert_article] LimitSec: {self.limit_sec}, Crawled: {crawled_time}. is_over_limit_sec={self.limit_sec < crawled_time}"
         logger.debug(time_status)
 
     def remove_old_post_urls(self, post_urls):
