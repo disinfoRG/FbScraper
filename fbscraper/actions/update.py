@@ -1,10 +1,10 @@
+import time
 import logging
 
 logger = logging.getLogger(__name__)
 from selenium.common.exceptions import TimeoutException, MoveTargetOutOfBoundsException
 from bs4 import BeautifulSoup
 import re
-from fbscraper.helper import helper
 from fbscraper.settings import (
     DEFAULT_IS_LOGINED,
     DEFAULT_MAX_TRY_TIMES,
@@ -46,7 +46,7 @@ class UpdateCrawler:
         logger.debug(message)
 
     def crawl_and_save(self):
-        self.start_at = helper.now()
+        self.start_at = int(time.time())
         self.enter_site()
 
         is_located = self.locate_target_post()
@@ -85,14 +85,14 @@ class UpdateCrawler:
 
         # save html with relocated post node
         raw_html = (
-            helper.get_html(self.post_node)
+            self.post_node and self.post_node.get_attribute("outerHTML")
             if self.post_node
             else self.get_post_raw_html(self.browser.page_source)
         )
         self.save(raw_html)
 
     def save(self, raw_html):
-        now = helper.now()
+        now = int(time.time())
         self.snapshot_article(now, raw_html)
         self.log_pipeline(table="snapshot")
         self.refresh_article_snapshot_history(now, self.article_id)
@@ -109,12 +109,18 @@ class UpdateCrawler:
 
         if not self.is_logined:
             block_selector = "#headerArea"
-            helper.remove_element_by_selector(block_selector, self.browser)
+            self.browser.execute_script(
+                f"document.querySelector('{block_selector}') && document.querySelector('{block_selector}').remove()"
+            )
             removed_block_text = f'crawler: removed block element for non-logined browsing with selector="{block_selector}" \n'
             logger.debug(removed_block_text)
 
     def locate_target_post(self):
-        self.post_node = helper.get_element(self.browser, self.post_selector)
+        self.post_node = (
+            self.browser.find_elements_by_css_selector(self.post_selector)[0]
+            if len(self.browser.find_elements_by_css_selector(self.post_selector)) > 0
+            else None
+        )
 
         if not self.post_node:
             post_not_found = f'crawler: failed and article not found with selector "{self.post_selector}", article url is {self.article_url} \n'
@@ -170,23 +176,25 @@ class UpdateCrawler:
             display_comment_selector = (
                 '.userContentWrapper [data-testid="UFI2CommentsCount/root"]'
             )
-            helper.click_with_move(display_comment_selector, self.browser, timeout=0)
-            helper.wait()
+            fb.click_by_selector(driver=self.browser, selector=display_comment_selector)
+            time.sleep(random.uniform(2, 3))
 
     def turn_off_comment_filter(self):
         filter_menu_link_selector = '[data-testid="UFI2ViewOptionsSelector/root"] [data-testid="UFI2ViewOptionsSelector/link"]'
         filter_menu_selector = '[data-testid="UFI2ViewOptionsSelector/menuRoot"]'
         unfiltered_option_selector = '[data-testid="UFI2ViewOptionsSelector/menuRoot"] [data-ordering="RANKED_UNFILTERED"]'
 
-        helper.click_with_move(filter_menu_link_selector, self.browser)
+        fb.click_by_selector(driver=self.browser, selector=filter_menu_link_selector)
         logger.debug(
             f'crawler: clicked comment filter button with selector="{filter_menu_link_selector}" \n'
         )
-        helper.move_to_element_by_selector(filter_menu_selector, self.browser)
+        fb.move_to_element_by_selector(
+            driver=self.browser, selector=filter_menu_selector
+        )
         logger.debug(
             f'crawler: comment filter menu is shown with selector="{filter_menu_selector}" \n'
         )
-        helper.click_with_move(unfiltered_option_selector, self.browser)
+        fb.click_by_selector(driver=self.browser, selector=unfiltered_option_selector)
         logger.debug(
             f'crawler: clicked comment filter "RANKED_UNFILTERED" with selector="{unfiltered_option_selector}" \n'
         )
@@ -200,7 +208,7 @@ class UpdateCrawler:
         comment_loaders_total = 0
         self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
 
-        while (helper.now() - self.start_at) < self.limit_sec:
+        while (int(time.time()) - self.start_at) < self.limit_sec:
             comment_loaders = self.post_node.find_elements_by_css_selector(
                 comment_expander_selector
             )
@@ -208,19 +216,14 @@ class UpdateCrawler:
             is_clicked = False
             if comment_loaders_total > 0:
                 try:
-                    is_clicked = helper.click_with_move(
-                        comment_expander_selector, self.browser
+                    is_clicked = fb.click_by_selector(
+                        driver=self.browser, selector=comment_expander_selector
                     )
 
                 except MoveTargetOutOfBoundsException as e:
                     # https://www.facebook.com/photo.php?fbid=3321929767823884&set=p.3321929767823884&type=3&theater
                     dialog_close_button = self.browser.find_element_by_link_text("關閉")
-                    if dialog_close_button:
-                        cls_html = helper.get_html(dialog_close_button)
-                        logger.warning(helper.print_error(e, cls_html))
-                        helper.click(dialog_close_button, self.browser)
-                    else:
-                        logger.warning(helper.print_error(e))
+                    dialog_close_button and dialog_close_button.click()
 
             if not is_clicked:
                 empty_count += 1
@@ -228,9 +231,9 @@ class UpdateCrawler:
                 clicked_count += 1
 
             self.log_crawler(depth, comment_loaders_total, clicked_count, empty_count)
-            helper.wait()
+            time.sleep(random.uniform(2, 3))
 
-        crawled_time = helper.now() - self.start_at
+        crawled_time = int(time.time()) - self.start_at
         time_status = f"[update.py - load_comment] LimitSec: {self.limit_sec}, Crawled: {crawled_time}. is_over_limit_sec={self.limit_sec < crawled_time}"
         logger.debug(time_status)
 
