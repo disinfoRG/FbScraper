@@ -20,8 +20,10 @@ logger = logging.getLogger(__name__)
 import fb_post
 import fbscraper.facebook as fb
 from fbscraper.actions.discover import DiscoverCrawler
+from fbscraper.actions.update import UpdateCrawler
 from fbscraper.settings import (
     SITE_DEFAULT_LIMIT_SEC,
+    POST_DEFAULT_LIMIT_SEC,
     DB_URL,
     DEFAULT_BROWSER_TYPE,
     DEFAULT_EXECUTABLE_PATH,
@@ -33,13 +35,51 @@ db.connect(DB_URL)
 
 
 def update(site_id, headful):
+    articles_len = next(
+        db.get_articles_outdated_count_by_site_id(site_id=site_id, now=int(time.time()))
+    )["count"]
+    if articles_len == 0:
+        return
+
     articles = db.get_articles_outdated_by_site_id(
         site_id=site_id, now=int(time.time())
     )
+
+    browser = fb.create_driver_without_session(
+        browser_type=DEFAULT_BROWSER_TYPE,
+        executable_path=DEFAULT_EXECUTABLE_PATH,
+        is_headless=(not headful),
+    )
+
+    count = 0
     for article in articles:
-        article_id = str(article["article_id"])
-        args = [article_id] if not headful else [article_id, "--headful"]
-        fb_post.main(args)
+        count += 1
+        article_id = article["article_id"]
+        article_url = article["url"]
+        logger.info(f"({count}/{articles_len}) start to update article id {article_id}")
+
+        try:
+            crawler = UpdateCrawler(
+                article_url=article_url,
+                db=db,
+                article_id=article_id,
+                browser=browser,
+                limit_sec=POST_DEFAULT_LIMIT_SEC,
+            )
+
+            crawler.crawl_and_save()
+
+        except fb.SecurityCheckError as e:
+            logger.error(e)
+            break
+        except Exception as e:
+            logger.debug(e)
+
+        logger.info(f"({count}/{articles_len}) end to update article id {article_id}")
+
+    if browser:
+        browser.close()
+        browser.quit()
 
 
 def discover(site_id, headful):
