@@ -1,9 +1,10 @@
+import time
+import random
 import logging
 
 logger = logging.getLogger(__name__)
 from bs4 import BeautifulSoup
 import zlib
-from fbscraper.helper import helper
 from fbscraper.settings import (
     DEFAULT_MAX_TRY_TIMES,
     DEFAULT_SHOULD_USE_ORIGINAL_URL,
@@ -35,7 +36,7 @@ class DiscoverCrawler:
         self.start_at = None
 
     def crawl_and_save(self):
-        self.start_at = helper.now()
+        self.start_at = int(time.time())
         self.enter_site()
         self.expand_page_and_insert_article()
 
@@ -49,7 +50,7 @@ class DiscoverCrawler:
         self.browser.get(post_root_url)
 
         fb.raise_if_security_check(self.browser)
-        helper.wait()
+        time.sleep(random.uniform(2, 3))
 
     def expand_page_and_insert_article(self):
         viewed_count = 0
@@ -57,13 +58,15 @@ class DiscoverCrawler:
         empty_count = 0
 
         while (
-            helper.now() - self.start_at
+            int(time.time()) - self.start_at
         ) < self.limit_sec and empty_count < self.max_try_times:
             self.log_crawler(
                 viewed_count, new_count, len(self.existing_article_urls), empty_count
             )
-            helper.scroll(self.browser)
-            helper.wait()
+            self.browser.execute_script(
+                "window.scrollTo(0, document.body.scrollHeight);"
+            )
+            time.sleep(random.uniform(2, 3))
 
             post_urls = self.get_post_urls_from_html(html=self.browser.page_source)
             viewed_count = len(post_urls)
@@ -85,7 +88,7 @@ class DiscoverCrawler:
                 empty_count = 0
                 self.existing_article_urls += new_post_urls
 
-        crawled_time = helper.now() - self.start_at
+        crawled_time = int(time.time()) - self.start_at
         time_status = f"[discover crawler - expand_page_and_insert_article] LimitSec: {self.limit_sec}, Crawled: {crawled_time}. is_over_limit_sec={self.limit_sec < crawled_time}"
         logger.debug(time_status)
 
@@ -107,7 +110,7 @@ class DiscoverCrawler:
             if hasTimestamp:
                 url = anchor.get("href")
                 if url:
-                    url_info = helper.get_facebook_url_info(url)
+                    url_info = fb.get_facebook_url_info(url)
                     if url_info["permalink"]:
                         result = url_info["permalink"]
                         break
@@ -127,7 +130,7 @@ class DiscoverCrawler:
         article["url"] = article_url
         article["site_id"] = self.site_id
         article["article_type"] = "FBPost"
-        article["created_at"] = helper.now()
+        article["created_at"] = int(time.time())
         article["redirect_to"] = None
 
         article_id = self.db.insert_article(article)
