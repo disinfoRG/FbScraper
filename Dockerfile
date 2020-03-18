@@ -18,9 +18,10 @@ RUN CHROMEDRIVER_URL=https://chromedriver.storage.googleapis.com/79.0.3945.36/ch
 && dpkg -i /chrome.deb || apt-get update -y && apt-get upgrade -y || apt --fix-broken install -y \
 && rm /chrome.deb; fi
 RUN pip3 install pipenv
+
 ARG CACHEBUST=1
-RUN git clone https://github.com/disinfoRG/FbScraper.git && cd FbScraper && pipenv install --system && cd ..
-
-
 WORKDIR /FbScraper
+COPY . .
+RUN pipenv install --system
+
 ENV CHROMEDRIVER_BIN=/usr/local/bin/chromedriver
