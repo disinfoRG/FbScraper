@@ -1,12 +1,8 @@
 FROM debian:buster
 
-RUN apt-get update
-RUN apt-get install -y git ca-certificates locales curl debian-archive-keyring multiarch-support g++ gcc make dpkg-dev
-RUN echo 'zh_TW.UTF-8 UTF-8' >> /etc/locale.gen
-RUN echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen
-RUN locale-gen
-RUN apt-get update
+RUN apt-get update -y
 RUN apt-get install -y python3 python3-pip python3-dev libpq-dev gunicorn
+RUN apt-get install -y curl
 RUN CHROMEDRIVER_URL=https://chromedriver.storage.googleapis.com/79.0.3945.36/chromedriver_linux64.zip \
 && CHROME_URL=https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
 && apt-get install -y libnss3-dev unzip \
