@@ -66,5 +66,5 @@ python3 fb_post.py ARTICLE_ID \
 
 # Note
 - `--build-arg CACHEBUST=$(date +%s)`: with this argurment docker will rebuild the repo with `pipenv install --system`
-- if you don't want to build everytime: only run `docker build` once to get `fbscraper_image`, don't run `docker rmi`, and then `docker run` without `--rm`
+- if you don't want to build everytime: only run `docker build` once to get `fbscraper_image`, don't run `docker rmi`, and then `docker run`
 - replace uppercase to what you want: YOUR_DB_PASSWORD, YOUR_DB_NAME, YOUR_AIRTABLE_API_KEY, SITE_ID, ARTICLE_ID
