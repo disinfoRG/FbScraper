@@ -10,6 +10,12 @@ docker run --name fbscraper_database -e 'MYSQL_ROOT_PASSWORD=YOUR_DB_PASSWORD' -
 docker exec -it fbscraper_database mysql -u root -pYOUR_DB_PASSWORD -e 'CREATE DATABASE YOUR_DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
 ```
 
+## Clone and Enter Repository's Root Folder
+```sh
+git clone https://github.com/disinfoRG/FbScraper.git \
+&& cd FbScraper
+```
+
 ## Apply latest schema to database
 ```sh
 docker build -t fbscraper_image --build-arg CACHEBUST=$(date +%s) . \
@@ -59,5 +65,6 @@ python3 fb_post.py ARTICLE_ID \
 ```
 
 # Note
--  reuse cache: if you don't want to rebuild git repo everytime, remove `--build-arg CACHEBUST=$(date +%s)` from the command (it will build the repo for the first time, and then the next time it will skip)
+- `--build-arg CACHEBUST=$(date +%s)`: with this argurment docker will rebuild the repo with `pipenv install --system`
+- if you don't want to build everytime: only run `docker build` once to get `fbscraper_image`, don't run `docker rmi`, and then `docker run` without `--rm`
 - replace uppercase to what you want: YOUR_DB_PASSWORD, YOUR_DB_NAME, YOUR_AIRTABLE_API_KEY, SITE_ID, ARTICLE_ID
