@@ -21,6 +21,12 @@ def discover():
         fb_site.discover(site_id=entry['site_id'])
 
 
+def update():
+    site_ids = db.get_all_site_ids()
+    for entry in site_ids:
+        fb_site.update(site_id=entry['site_id'])
+
+
 def try_subcommands(skip_commands=[]):
     """
     Try git-style subcommands.
