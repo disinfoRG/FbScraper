@@ -34,7 +34,7 @@ db = pugsql.module("queries")
 db.connect(DB_URL)
 
 
-def update(site_id, headful):
+def update(site_id, headful=False):
     articles_len = next(
         db.get_articles_outdated_count_by_site_id(site_id=site_id, now=int(time.time()))
     )["count"]
@@ -82,7 +82,7 @@ def update(site_id, headful):
         browser.quit()
 
 
-def discover(site_id, headful):
+def discover(site_id, headful=False):
     site = db.get_site_by_id(site_id=site_id)
     site_url = site["url"]
 
@@ -124,8 +124,7 @@ def main():
     argument_parser.add_argument(
         "--headful",
         action="store_true",
-        help="run selenium in headful mode",
-        default=(not DEFAULT_IS_HEADLESS),
+        help="run selenium in headful mode"
     )
     argument_parser.add_argument(
         "--update",
