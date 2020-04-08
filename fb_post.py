@@ -24,58 +24,53 @@ from fbscraper.settings import (
     DB_URL,
     DEFAULT_BROWSER_TYPE,
     DEFAULT_EXECUTABLE_PATH,
-    DEFAULT_IS_HEADLESS,
 )
 
 
-def main(raw_args=None):
-    argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument(
-        "article_id", type=int, help="specify article id for update",
-    )
-    argument_parser.add_argument(
-        "--headful",
-        action="store_true",
-        help="run selenium in headful mode",
-        default=(not DEFAULT_IS_HEADLESS),
-    )
-    args = argument_parser.parse_args(raw_args)
-    article_id = args.article_id
-
-    logger.info(f"start with article id {article_id}")
-
+def update(args):
     db = pugsql.module("queries")
     db.connect(DB_URL)
 
-    article = db.get_article_by_id(article_id=article_id)
+    article = db.get_article_by_id(article_id=args.article_id)
     article_url = article["url"]
 
     try:
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
             executable_path=DEFAULT_EXECUTABLE_PATH,
-            is_headless=(not args.headful),
+            is_headless=True,
         )
 
         crawler = UpdateCrawler(
             article_url=article_url,
             db=db,
-            article_id=article_id,
+            article_id=args.article_id,
             browser=browser,
             limit_sec=POST_DEFAULT_LIMIT_SEC,
         )
 
         crawler.crawl_and_save()
 
-        browser.close()
         browser.quit()
     except fb.SecurityCheckError as e:
         logger.error(e)
     except Exception as e:
         logger.debug(e)
 
-    logger.info(f"end with article id {article_id}")
+
+def main(args):
+    if args.command == "update":
+        update(args)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    cmds = parser.add_subparsers(title="sub command", dest="command", required=True)
+
+    update_cmd = cmds.add_parser("update", help="do update")
+    update_cmd.add_argument(
+        "site-id", type=int, help="id of the site to work on",
+    )
+
+    args = parser.parse_args()
+    main(args)

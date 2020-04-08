@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import argparse
 import pugsql
 import time
@@ -17,7 +18,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # self-defined
-import fb_post
 import fbscraper.facebook as fb
 from fbscraper.actions.discover import DiscoverCrawler
 from fbscraper.actions.update import UpdateCrawler
@@ -27,14 +27,13 @@ from fbscraper.settings import (
     DB_URL,
     DEFAULT_BROWSER_TYPE,
     DEFAULT_EXECUTABLE_PATH,
-    DEFAULT_IS_HEADLESS,
 )
 
 db = pugsql.module("queries")
 db.connect(DB_URL)
 
 
-def update(site_id, headful):
+def update(site_id, limit_sec):
     articles_len = next(
         db.get_articles_outdated_count_by_site_id(site_id=site_id, now=int(time.time()))
     )["count"]
@@ -48,7 +47,7 @@ def update(site_id, headful):
     browser = fb.create_driver_without_session(
         browser_type=DEFAULT_BROWSER_TYPE,
         executable_path=DEFAULT_EXECUTABLE_PATH,
-        is_headless=(not headful),
+        is_headless=True,
     )
 
     count = 0
@@ -64,7 +63,7 @@ def update(site_id, headful):
                 db=db,
                 article_id=article_id,
                 browser=browser,
-                limit_sec=POST_DEFAULT_LIMIT_SEC,
+                limit_sec=limit_sec,
             )
 
             crawler.crawl_and_save()
@@ -78,11 +77,10 @@ def update(site_id, headful):
         logger.info(f"({count}/{articles_len}) end to update article id {article_id}")
 
     if browser:
-        browser.close()
         browser.quit()
 
 
-def discover(site_id, headful):
+def discover(site_id, limit_sec):
     site = db.get_site_by_id(site_id=site_id)
     site_url = site["url"]
 
@@ -94,7 +92,7 @@ def discover(site_id, headful):
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
             executable_path=DEFAULT_EXECUTABLE_PATH,
-            is_headless=(not headful),
+            is_headless=True,
         )
 
         crawler = DiscoverCrawler(
@@ -103,12 +101,11 @@ def discover(site_id, headful):
             site_url=site_url,
             site_id=site_id,
             existing_article_urls=existing_article_urls,
-            limit_sec=SITE_DEFAULT_LIMIT_SEC,
+            limit_sec=limit_sec,
         )
 
         crawler.crawl_and_save()
 
-        browser.close()
         browser.quit()
     except fb.SecurityCheckError as e:
         logger.error(e)
@@ -116,34 +113,32 @@ def discover(site_id, headful):
         logger.debug(e)
 
 
-def main():
-    argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument(
-        "site_id", type=int, help="by default, discover article urls for given site id",
-    )
-    argument_parser.add_argument(
-        "--headful",
-        action="store_true",
-        help="run selenium in headful mode",
-        default=(not DEFAULT_IS_HEADLESS),
-    )
-    argument_parser.add_argument(
-        "--update",
-        action="store_true",
-        help="snapshot html of site's discovered articles",
-        default=(not DEFAULT_IS_HEADLESS),
-    )
-    args = argument_parser.parse_args()
-
-    logger.info(f"start with site id {args.site_id}")
-
-    if not args.update:
-        discover(site_id=args.site_id, headful=args.headful)
-    else:
-        update(site_id=args.site_id, headful=args.headful)
-
-    logger.info(f"end with site id {args.site_id}")
+def main(args):
+    if args.command == "discover":
+        discover(site_id=args.site_id, limit_sec=args.limit_sec)
+    elif args.command == "update":
+        update(site_id=args.site_id, limit_sec=args.limit_sec)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    cmds = parser.add_subparsers(title="sub command", dest="command", required=True)
+
+    discover_cmd = cmds.add_parser("discover", help="do discover")
+    discover_cmd.add_argument(
+        "site-id", type=int, help="id of the site to work on",
+    )
+    discover_cmd.add_argument(
+        "--limit-sec", type=int, help="time limit to run in seconds", default=SITE_DEFAULT_LIMIT_SEC
+    )
+
+    update_cmd = cmds.add_parser("update", help="do update")
+    update_cmd.add_argument(
+        "site-id", type=int, help="id of the site to work on",
+    )
+    update_cmd.add_argument(
+        "--limit-sec", type=int, help="time limit to run in seconds", default=POST_DEFAULT_LIMIT_SEC
+    )
+
+    args = parser.parse_args()
+    main(args)

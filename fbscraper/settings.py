@@ -13,7 +13,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FORMAT = "[%(levelname)s] %(asctime)s %(name)s: %(message)s"
 LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
-SITE_DEFAULT_LIMIT_SEC = 60 * 1
+SITE_DEFAULT_LIMIT_SEC = 60 * 30
 POST_DEFAULT_LIMIT_SEC = 60 * 1
 
 DEFAULT_BROWSER_TYPE = "Chrome"

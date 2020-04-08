@@ -1,4 +1,5 @@
 import time
+import random
 import logging
 
 logger = logging.getLogger(__name__)
@@ -281,4 +282,4 @@ class UpdateCrawler:
         elif table == "article":
             result = f"[{STATUS_SUCCESS}] update Article #{self.article_id} after ArticleSnapshot inserted"
         timestamp = f"pipeline: {result} \n"
-        logger.debug(timestamp)
+        logger.info(timestamp)
