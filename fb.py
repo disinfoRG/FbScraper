@@ -26,7 +26,7 @@ def discover(args):
 
 def update(args):
     sites = queries.get_sites_to_discover()
-    for site in sites[::-1]:
+    for site in sites:
         fb_site.update(site["site_id"], limit_sec=POST_DEFAULT_LIMIT_SEC)
 
 
