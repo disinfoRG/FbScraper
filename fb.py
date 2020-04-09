@@ -46,10 +46,21 @@ def try_subcommands(skip_commands=[]):
 
 
 def main(args):
+    target_func = None
     if args.command == "discover":
-        discover(args)
+        target_func = discover
     elif args.command == "update":
-        update(args)
+        target_func = update
+
+    if target_func:
+        p = multiprocessing.Process(target=target_func, args=(args,))
+        p.start()
+
+        time.sleep(args.limit_sec)
+        # terminate
+        p.terminate()
+        # Cleanup
+        p.join()
 
 
 if __name__ == "__main__":
@@ -58,7 +69,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     cmds = parser.add_subparsers(title="sub command", dest="command", required=True)
     discover_cmd = cmds.add_parser("discover", help="do discover")
+    discover_cmd.add_argument(
+        "--limit-sec", type=int, help="process run time limit in seconds", default=3000
+    )
+
     update_cmd = cmds.add_parser("update", help="do update")
+    update_cmd.add_argument(
+        "--limit-sec", type=int, help="process run time limit in seconds", default=3000
+    )
+
     args = parser.parse_args()
 
     main(args)
