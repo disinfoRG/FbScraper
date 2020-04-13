@@ -82,7 +82,6 @@ class DiscoverCrawler:
                 for p_url in new_post_urls:
                     if p_url:
                         article_id = self.insert_article(p_url)
-                        self.db.update_site_crawl_time(site_id=self.site_id, last_crawl_at=int(time.time()))
                         self.log_pipeline(article_id)
 
                 # reset empty count check when new_count > 0

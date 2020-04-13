@@ -87,7 +87,7 @@ def discover(site_id, limit_sec):
     existing_article_urls = [
         x["url"] for x in db.get_article_urls_of_site(site_id=site_id)
     ]
-
+    db.update_site_crawl_time(site_id=site_id, last_crawl_at=int(time.time()))
     try:
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
@@ -115,9 +115,9 @@ def discover(site_id, limit_sec):
 
 def main(args):
     if args.command == "discover":
-        discover(site_id=args.site_id, limit_sec=args.limit_sec)
+        discover(site_id=args.id, limit_sec=args.limit_sec)
     elif args.command == "update":
-        update(site_id=args.site_id, limit_sec=args.limit_sec)
+        update(site_id=args.id, limit_sec=args.limit_sec)
 
 
 if __name__ == "__main__":
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     discover_cmd = cmds.add_parser("discover", help="do discover")
     discover_cmd.add_argument(
-        "site-id", type=int, help="id of the site to work on",
+        "id", type=int, help="id of the site to work on",
     )
     discover_cmd.add_argument(
         "--limit-sec", type=int, help="time limit to run in seconds", default=SITE_DEFAULT_LIMIT_SEC
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
     update_cmd = cmds.add_parser("update", help="do update")
     update_cmd.add_argument(
-        "site-id", type=int, help="id of the site to work on",
+        "id", type=int, help="id of the site to work on",
     )
     update_cmd.add_argument(
         "--limit-sec", type=int, help="time limit to run in seconds", default=POST_DEFAULT_LIMIT_SEC

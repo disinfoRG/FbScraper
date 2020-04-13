@@ -31,7 +31,7 @@ def update(args):
     db = pugsql.module("queries")
     db.connect(DB_URL)
 
-    article = db.get_article_by_id(article_id=args.article_id)
+    article = db.get_article_by_id(article_id=args.id)
     article_url = article["url"]
 
     try:
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     update_cmd = cmds.add_parser("update", help="do update")
     update_cmd.add_argument(
-        "article-id", type=int, help="id of the article to work on",
+        "id", type=int, help="id of the article to work on",
     )
 
     args = parser.parse_args()
