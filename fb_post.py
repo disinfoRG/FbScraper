@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     update_cmd = cmds.add_parser("update", help="do update")
     update_cmd.add_argument(
-        "site-id", type=int, help="id of the site to work on",
+        "article-id", type=int, help="id of the article to work on",
     )
 
     args = parser.parse_args()
