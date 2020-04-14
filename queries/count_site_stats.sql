@@ -1,4 +1,6 @@
-SELECT 
+-- :name count_site_stats :many
+
+SELECT
 	site_id, 
     (
     SELECT count(article_id) from Article
