@@ -1,22 +1,21 @@
--- :name count_site_stats :many
-
-SELECT
-	site_id,
-    count(IF(first_snapshot_at = snapshot_at, 1, NULL)) as discover_count,
-    count(IF(first_snapshot_at != snapshot_at, 1, NULL)) as update_count
-FROM
-(
-	SELECT
-		ArticleSnapshot.article_id, Article.site_id, Article.first_snapshot_at, ArticleSnapshot.snapshot_at
-	FROM
-		ArticleSnapshot
-	INNER JOIN
-		Article
-	ON
-		ArticleSnapshot.article_id = Article.article_id
-	WHERE
-		ArticleSnapshot.snapshot_at >= :time_start
-	AND
-		ArticleSnapshot.snapshot_at < :time_end
-) as T
-group by site_id
+SELECT 
+	site_id, 
+    (
+    SELECT count(article_id) from Article
+    where site_id = A.site_id 
+    and created_at >=:time_start and created_at < :time_end
+    ) as discover_count,
+    (
+    SELECT count(article_id) 
+    from 
+    (Select ArticleSnapshot.article_id, ArticleSnapshot.snapshot_at, Article.site_id
+    from Article
+    inner join ArticleSnapshot
+    on Article.article_id = ArticleSnapshot.article_id
+    ) as Sub
+    where site_id = A.site_id
+    and snapshot_at >=:time_start and snapshot_at < :time_end
+    ) as update_count
+FROM Article as A
+GROUP BY site_id
+HAVING discover_count > 0 or update_count > 0;
