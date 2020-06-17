@@ -2,18 +2,24 @@
 
 ### Setup
 
-We use MySQL.  To setup database connections, copy `.env.default` to `.env`, and set `DB_URL` value.  MySQL connection string should start with `mysql+pymysql://` so that sqlalchemy uses the correct driver.
-
+#### Install Python packages
 We use Python 3.7.  Install Python dependencies and run database migrations:
 
 ```sh
 $ pip install pipenv
 $ pipenv install --dev
-$ pipenv shell # start a shell in virtual env
-$ alembic upgrade head
 ```
 
-Then update your site table.  First, you need an API key from Airtable generated [here](https://airtable.com/account) and the id of your base (see [here](https://airtable.com/api) for info).  Add the following variables to `.env`:
+#### Set up Database
+We use MySQL (MariaDB 10).  To setup database connections:
+1. Create a database.  Take a note of the database name, hostname, username, and password.
+2. The database connection string will be `mysql+pymysql://<username>:<password>@<hostname>/<database name>`.  We use PyMySQL, so the connection string should starts with `mysql+pymysql` in order for SQLAlchemy to pick up the right driver.
+3. Copy `.env.default` to `.env`.
+4. Edit the value of `DB_URL` to be the connection string.  You can leave all other settings in `.env` as is for now.
+5. Run db migrations with `pipenv run alembic upgrade head`
+
+
+Then, update your site table.  First, you need an API key from Airtable generated [here](https://airtable.com/account) and the id of your base (see [here](https://airtable.com/api) for info).  Add the following variables to `.env`:
 ```sh
 $ echo AIRTABLE_BASE_ID={id_of_your_airtable_base} >> .env
 $ echo AIRTABLE_API_KEY={your_api_key} >> .env
