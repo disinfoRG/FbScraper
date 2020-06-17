@@ -1,70 +1,57 @@
-# Quick Start
-## Run database server
-每次開發時啟動container：docker start -a fbscraper_database
+# FbScraper
+
+### Setup
+
+We use MySQL.  To setup database connections, copy `.env.default` to `.env`, and set `DB_URL` value.  MySQL connection string should start with `mysql+pymysql://` so that sqlalchemy uses the correct driver.
+
+We use Python 3.7.  Install Python dependencies and run database migrations:
+
 ```sh
-docker run --name fbscraper_database -e 'MYSQL_ROOT_PASSWORD=YOUR_DB_PASSWORD' -p 3306:3306 -p 33060:33060 -d mysql:5.7.29
+$ pip install pipenv
+$ pipenv install --dev
+$ pipenv shell # start a shell in virtual env
+$ alembic upgrade head
 ```
 
-## Create database
+Then update your site table.  First, you need an API key from Airtable generated [here](https://airtable.com/account) and the id of your base (see [here](https://airtable.com/api) for info).  Add the following variables to `.env`:
 ```sh
-docker exec -it fbscraper_database mysql -u root -pYOUR_DB_PASSWORD -e 'CREATE DATABASE YOUR_DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
+$ echo AIRTABLE_BASE_ID={id_of_your_airtable_base} >> .env
+$ echo AIRTABLE_API_KEY={your_api_key} >> .env
+$ echo SITE_TYPES=["{site_type_1}", "{site_type_2}",...] >> .env
+```
+Afterwards, do the following to update your site table
+```sh
+$ SCRAPY_PROJECT=sitesAirtable pipenv run scrapy crawl updateSites
 ```
 
-## Clone and Enter Repository's Root Folder
+### Running
+1. Find new posts for all ACTIVE facebook pages/groups listed in Site table in database. Activity is determined by 'is_active' column in airtable.
 ```sh
-git clone https://github.com/disinfoRG/FbScraper.git \
-&& cd FbScraper
+$ python fb.py discover
 ```
+    Optional Arguments:
+            --limit-sec: time limit to run in seconds, default = 3000.
 
-## Apply latest schema to database
+1. Revisit posts in database based on next_snapshot_at parameter in Article Table on the mysql database.
+The function will save new html to ArticleSnapshot table and update the snapshot parameters in Article Table.
 ```sh
-docker build -t fbscraper_image --build-arg CACHEBUST=$(date +%s) . \
-&& docker run --env DB_URL=mysql+pymysql://root:YOUR_DB_PASSWORD@127.0.0.1:3306/YOUR_DB_NAME \
---network=host --rm --name FBSCRAPER_CONTAINER -it fbscraper_image \
-alembic upgrade head \
-&& docker rmi fbscraper_image
+# update all
+$ python fb.py update
 ```
+    Optional Arguments:
+            --limit-sec: time limit to run in seconds, default = 3000.
 
-## Refresh database's site list
-You need an API key from Airtable generated [here](https://airtable.com/account) for YOUR_AIRTABLE_API_KEY
+
+1. Find new posts for a specified facebook page/group.
 ```sh
-docker build -t fbscraper_image --build-arg CACHEBUST=$(date +%s) . \
-&& docker run --env DB_URL=mysql+pymysql://root:YOUR_DB_PASSWORD@127.0.0.1:3306/YOUR_DB_NAME \
---env AIRTABLE_API_KEY=YOUR_AIRTABLE_API_KEY \
---env SITE_TYPES='["Fb 專頁", "Fb 公開社團"]' \
---network=host --rm --name FBSCRAPER_CONTAINER -it fbscraper_image \
-scrapy crawl updateSites \
-&& docker rmi fbscraper_image
+$ python fb.py site discover {site-id}
 ```
-
-## Discover a site's new article urls
+    Optional Arguments:
+            --limit-sec: max duration in seconds for a facebook page/group, default = 1800.
+            
+1. Revisit posts in a specified facebook page/group.
 ```sh
-docker build -t fbscraper_image --build-arg CACHEBUST=$(date +%s) . \
-&& docker run --env DB_URL=mysql+pymysql://root:YOUR_DB_PASSWORD@127.0.0.1:3306/YOUR_DB_NAME \
---network=host --rm --name FBSCRAPER_CONTAINER -it fbscraper_image \
-python3 fb_site.py SITE_ID \
-&& docker rmi fbscraper_image
+$ python fb.py site update {site-id}
 ```
-
-## Update a site's articles
-```sh
-docker build -t fbscraper_image --build-arg CACHEBUST=$(date +%s) . \
-&& docker run --env DB_URL=mysql+pymysql://root:YOUR_DB_PASSWORD@127.0.0.1:3306/YOUR_DB_NAME \
---network=host --rm --name FBSCRAPER_CONTAINER -it fbscraper_image \
-python3 fb_site.py SITE_ID --update \
-&& docker rmi fbscraper_image
-```
-
-## Update an article
-```sh
-docker build -t fbscraper_image --build-arg CACHEBUST=$(date +%s) . \
-&& docker run --env DB_URL=mysql+pymysql://root:YOUR_DB_PASSWORD@127.0.0.1:3306/YOUR_DB_NAME \
---network=host --rm --name fbscraper_container -it fbscraper_image \
-python3 fb_post.py ARTICLE_ID \
-&& docker rmi fbscraper_image
-```
-
-# Note
-- `--build-arg CACHEBUST=$(date +%s)`: with this argurment docker will rebuild the repo with `pipenv install --system`
-- if you don't want to build everytime: only run `docker build` once to get `fbscraper_image`, don't run `docker rmi`, and then `docker run`
-- replace uppercase to what you want: YOUR_DB_PASSWORD, YOUR_DB_NAME, YOUR_AIRTABLE_API_KEY, SITE_ID, ARTICLE_ID
+    Optional Arguments:
+            --limit-sec: max duration in seconds to load one post, default = 60.

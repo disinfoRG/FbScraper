@@ -129,7 +129,7 @@ if __name__ == "__main__":
         "id", type=int, help="id of the site to work on",
     )
     discover_cmd.add_argument(
-        "--limit-sec", type=int, help="time limit to run in seconds", default=SITE_DEFAULT_LIMIT_SEC
+        "--limit-sec", type=int, help="max duration in seconds for a site", default=SITE_DEFAULT_LIMIT_SEC
     )
 
     update_cmd = cmds.add_parser("update", help="do update")
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         "id", type=int, help="id of the site to work on",
     )
     update_cmd.add_argument(
-        "--limit-sec", type=int, help="time limit to run in seconds", default=POST_DEFAULT_LIMIT_SEC
+        "--limit-sec", type=int, help="max duration in seconds for a post", default=POST_DEFAULT_LIMIT_SEC
     )
 
     args = parser.parse_args()
