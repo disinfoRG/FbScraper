@@ -36,7 +36,8 @@ $ SCRAPY_PROJECT=sitesAirtable pipenv run scrapy crawl updateSites
 $ python fb.py discover
 ```
     Optional Arguments:
-            --limit-sec: time limit to run in seconds, default = 3000.
+            --limit-sec: process run time limit in seconds, default = 3000.
+            --site-limit-sec: max load time in seconds for a site, default = 1800.
 
 1. Revisit posts in database based on next_snapshot_at parameter in Article Table on the mysql database.
 The function will save new html to ArticleSnapshot table and update the snapshot parameters in Article Table.
@@ -45,7 +46,8 @@ The function will save new html to ArticleSnapshot table and update the snapshot
 $ python fb.py update
 ```
     Optional Arguments:
-            --limit-sec: time limit to run in seconds, default = 3000.
+            --limit-sec: process run time limit in seconds, default = 3000.
+            --article-limit-sec: max load time in seconds for a post, default = 60.
 
 
 1. Find new posts for a specified facebook page/group.
@@ -53,11 +55,12 @@ $ python fb.py update
 $ python fb.py site discover {site-id}
 ```
     Optional Arguments:
-            --limit-sec: max duration in seconds for a facebook page/group, default = 1800.
+            --limit-sec: process run time limit in seconds, default = 3000.
             
 1. Revisit posts in a specified facebook page/group.
 ```sh
 $ python fb.py site update {site-id}
 ```
     Optional Arguments:
-            --limit-sec: max duration in seconds to load one post, default = 60.
+            --limit-sec: process run time limit in seconds, default = 3000.
+            --article-limit-sec: max load time in seconds for a post, default = 60.

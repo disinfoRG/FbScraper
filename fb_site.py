@@ -3,6 +3,7 @@
 import argparse
 import pugsql
 import time
+import multiprocessing
 from fbscraper.settings import LOG_LEVEL, LOG_FORMAT, LOG_DATEFMT
 import logging
 
@@ -33,7 +34,7 @@ db = pugsql.module("queries")
 db.connect(DB_URL)
 
 
-def update(site_id, limit_sec):
+def update_all(site_id, article_limit_sec):
     articles_len = next(
         db.get_articles_outdated_count_by_site_id(site_id=site_id, now=int(time.time()))
     )["count"]
@@ -63,7 +64,7 @@ def update(site_id, limit_sec):
                 db=db,
                 article_id=article_id,
                 browser=browser,
-                limit_sec=limit_sec,
+                limit_sec=article_limit_sec,
             )
 
             crawler.crawl_and_save()
@@ -78,6 +79,17 @@ def update(site_id, limit_sec):
 
     if browser:
         browser.quit()
+
+
+def update(site_id, article_limit_sec, limit_sec):
+    p = multiprocessing.Process(target=update_all, args=(site_id, article_limit_sec,))
+    p.start()
+
+    time.sleep(limit_sec)
+    # terminate
+    p.terminate()
+    # Cleanup
+    p.join()
 
 
 def discover(site_id, limit_sec):
@@ -114,10 +126,11 @@ def discover(site_id, limit_sec):
 
 
 def main(args):
+    print(args)
     if args.command == "discover":
-        discover(site_id=args.id, limit_sec=args.limit_sec)
+        discover(args)
     elif args.command == "update":
-        update(site_id=args.id, limit_sec=args.limit_sec)
+        update(args)
 
 
 if __name__ == "__main__":
@@ -129,15 +142,19 @@ if __name__ == "__main__":
         "id", type=int, help="id of the site to work on",
     )
     discover_cmd.add_argument(
-        "--limit-sec", type=int, help="max duration in seconds for a site", default=SITE_DEFAULT_LIMIT_SEC
+        "--limit-sec", type=int, help="process run time limit in seconds", default=3000
     )
 
     update_cmd = cmds.add_parser("update", help="do update")
     update_cmd.add_argument(
         "id", type=int, help="id of the site to work on",
     )
+
     update_cmd.add_argument(
-        "--limit-sec", type=int, help="max duration in seconds for a post", default=POST_DEFAULT_LIMIT_SEC
+        "--limit-sec", type=int, help="process run time limit in seconds", default=3000
+    )
+    update_cmd.add_argument(
+        "--article-limit-sec", type=int, help="max load time in seconds for a post", default=POST_DEFAULT_LIMIT_SEC
     )
 
     args = parser.parse_args()

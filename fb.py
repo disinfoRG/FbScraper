@@ -4,11 +4,11 @@ import sys
 import pathlib
 import subprocess
 import argparse
-import fb_site
 import pugsql
 import os
 import multiprocessing
 import time
+import fb_site
 from fbscraper.settings import (
     SITE_DEFAULT_LIMIT_SEC,
     POST_DEFAULT_LIMIT_SEC,
@@ -21,13 +21,13 @@ queries.connect(os.getenv("DB_URL"))
 def discover(args):
     sites = queries.get_sites_to_discover()
     for site in sites:
-        fb_site.discover(site["site_id"], limit_sec=SITE_DEFAULT_LIMIT_SEC)
+        fb_site.discover(site["site_id"], limit_sec=args.site_limit_sec)
 
 
 def update(args):
     sites = queries.get_sites_to_discover()
     for site in sites:
-        fb_site.update(site["site_id"], limit_sec=POST_DEFAULT_LIMIT_SEC)
+        fb_site.update_all(site["site_id"], args.article_limit_sec)
 
 
 def try_subcommands(skip_commands=[]):
@@ -37,7 +37,7 @@ def try_subcommands(skip_commands=[]):
     if len(sys.argv) > 1 and sys.argv not in skip_commands:
         binname = pathlib.Path(__file__)
         sub_cmd = (
-            binname.parent.resolve() / f"{binname.stem}-{sys.argv[1]}{binname.suffix}"
+            binname.parent.resolve() / f"{binname.stem}_{sys.argv[1]}{binname.suffix}"
         )
         try:
             sys.exit(subprocess.run([sub_cmd, *sys.argv[2:]]).returncode)
@@ -72,12 +72,17 @@ if __name__ == "__main__":
     discover_cmd.add_argument(
         "--limit-sec", type=int, help="process run time limit in seconds", default=3000
     )
+    discover_cmd.add_argument(
+        "--site-limit-sec", type=int, help="max load time in seconds for a site", default=SITE_DEFAULT_LIMIT_SEC
+    )
 
     update_cmd = cmds.add_parser("update", help="do update")
     update_cmd.add_argument(
         "--limit-sec", type=int, help="process run time limit in seconds", default=3000
     )
-
+    update_cmd.add_argument(
+        "--article-limit-sec", type=int, help="max load time in seconds for a post", default=POST_DEFAULT_LIMIT_SEC
+    )
     args = parser.parse_args()
 
     main(args)
