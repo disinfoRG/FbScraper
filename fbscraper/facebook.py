@@ -15,6 +15,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from fbscraper.settings import DEFAULT_BROWSER_TYPE, DEFAULT_EXECUTABLE_PATH
+
 
 class SecurityCheckError(Exception):
     pass
@@ -105,7 +107,9 @@ def move_to_element_by_selector(driver, selector):
 
 
 def create_driver_without_session(
-    browser_type="Chrome", executable_path=None, is_headless=True
+    browser_type=DEFAULT_BROWSER_TYPE,
+    executable_path=DEFAULT_EXECUTABLE_PATH,
+    is_headless=True,
 ):
     result = None
     options = None
