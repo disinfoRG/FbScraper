@@ -33,7 +33,6 @@ def update(args):
 
     article = db.get_article_by_id(article_id=args.id)
     article_url = article["url"]
-
     try:
         browser = fb.create_driver_without_session(
             browser_type=DEFAULT_BROWSER_TYPE,
@@ -44,9 +43,9 @@ def update(args):
         crawler = UpdateCrawler(
             article_url=article_url,
             db=db,
-            article_id=args.article_id,
+            article_id=args.id,
             browser=browser,
-            limit_sec=POST_DEFAULT_LIMIT_SEC,
+            limit_sec=args.limit_sec,
         )
 
         crawler.crawl_and_save()
@@ -70,6 +69,9 @@ if __name__ == "__main__":
     update_cmd = cmds.add_parser("update", help="do update")
     update_cmd.add_argument(
         "id", type=int, help="id of the article to work on",
+    )
+    update_cmd.add_argument(
+        "--limit-sec", type=int, help="process run time limit in seconds", default=POST_DEFAULT_LIMIT_SEC
     )
 
     args = parser.parse_args()

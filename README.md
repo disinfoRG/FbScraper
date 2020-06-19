@@ -55,7 +55,7 @@ $ python fb.py update
 $ python fb.py site discover {site-id}
 ```
     Optional Arguments:
-            --limit-sec: process run time limit in seconds, default = 3000.
+            --limit-sec: process run time limit in seconds, default = 1800.
             
 1. Revisit posts in a specified facebook page/group.
 ```sh
@@ -64,3 +64,10 @@ $ python fb.py site update {site-id}
     Optional Arguments:
             --limit-sec: process run time limit in seconds, default = 3000.
             --article-limit-sec: max load time in seconds for a post, default = 60.
+            
+1. Revisit one post specified by id
+```sh
+$ python fb.py post update {article-id}
+```
+    Optional Arguments:
+            --limit-sec: process run time limit in seconds, default = 60.
