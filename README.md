@@ -31,7 +31,7 @@ $ SCRAPY_PROJECT=sitesAirtable pipenv run scrapy crawl updateSites
 ```
 
 ### Running
-1. Find new posts for all ACTIVE facebook pages/groups listed in Site table in database. Activity is determined by 'is_active' column in airtable.
+1. Find new articles in all ACTIVE facebook pages/groups listed in Site table in database. Activity is determined by `is_active` column in airtable.
 ```sh
 $ python fb.py discover
 ```
@@ -39,7 +39,7 @@ $ python fb.py discover
             --limit-sec: process run time limit in seconds, default = 3000.
             --site-limit-sec: max load time in seconds for a site, default = 1800.
 
-1. Revisit posts in database based on next_snapshot_at parameter in Article Table on the mysql database.
+2. Revisit articles in database based on next_snapshot_at parameter in Article Table on the mysql database.
 The function will save new html to ArticleSnapshot table and update the snapshot parameters in Article Table.
 ```sh
 # update all
@@ -47,25 +47,25 @@ $ python fb.py update
 ```
     Optional Arguments:
             --limit-sec: process run time limit in seconds, default = 3000.
-            --article-limit-sec: max load time in seconds for a post, default = 60.
+            --article-limit-sec: max load time in seconds for an article, default = 60.
 
 
-1. Find new posts for a specified facebook page/group.
+3. Find new articles in a specified facebook page/group.
 ```sh
 $ python fb.py site discover {site-id}
 ```
     Optional Arguments:
             --limit-sec: process run time limit in seconds, default = 1800.
             
-1. Revisit posts in a specified facebook page/group.
+4. Revisit articles in a specified facebook page/group.
 ```sh
 $ python fb.py site update {site-id}
 ```
     Optional Arguments:
             --limit-sec: process run time limit in seconds, default = 3000.
-            --article-limit-sec: max load time in seconds for a post, default = 60.
+            --article-limit-sec: max load time in seconds for an article, default = 60.
             
-1. Revisit one post specified by id
+5. Revisit one article specified by id
 ```sh
 $ python fb.py post update {article-id}
 ```
